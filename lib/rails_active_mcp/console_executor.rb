@@ -192,8 +192,8 @@ module RailsActiveMcp
 
       console_context.instance_eval do
         # Add Rails helpers if available
-        if defined?(Rails)
-          extend Rails.application.routes.url_helpers
+        if defined?(Rails) && Rails.application
+          extend Rails.application.routes.url_helpers if Rails.application.routes
 
           def reload!
             Rails.application.reloader.reload!
@@ -205,7 +205,7 @@ module RailsActiveMcp
           end
 
           def helper
-            ApplicationController.helpers
+            ApplicationController.helpers if defined?(ApplicationController)
           end
         end
 

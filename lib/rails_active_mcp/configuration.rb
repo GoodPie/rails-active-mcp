@@ -1,3 +1,5 @@
+require 'fileutils'
+
 module RailsActiveMcp
   class Configuration
     attr_accessor :enabled, :safe_mode, :default_timeout, :max_results,
@@ -14,7 +16,8 @@ module RailsActiveMcp
       @blocked_models = []
       @custom_safety_patterns = []
       @log_executions = true
-      @audit_file = Rails.root.join("log", "rails_active_mcp.log") if defined?(Rails)
+      # Safe Rails.root access
+      @audit_file = rails_root_join("log", "rails_active_mcp.log") if defined?(Rails) && Rails.respond_to?(:root) && Rails.root
       @enable_mutation_tools = false
       @require_confirmation_for = [:delete, :destroy, :update_all, :delete_all]
       @execution_environment = :current # :current, :sandbox, :readonly_replica
@@ -76,6 +79,16 @@ module RailsActiveMcp
       if defined?(Rails) && @audit_file
         audit_dir = File.dirname(@audit_file)
         FileUtils.mkdir_p(audit_dir) unless File.directory?(audit_dir)
+      end
+    end
+
+    private
+
+    def rails_root_join(*args)
+      if defined?(Rails) && Rails.respond_to?(:root) && Rails.root
+        Rails.root.join(*args)
+      else
+        File.join(Dir.pwd, *args)
       end
     end
   end

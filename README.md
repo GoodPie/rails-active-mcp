@@ -1,12 +1,11 @@
-# Rails Console MCP
+# Rails Active MCP
 
-A Ruby gem that provides secure Rails console access through Model Context Protocol (MCP) for AI agents and development
-tools like Warp Terminal.
+A Ruby gem that provides secure Rails console access through Model Context Protocol (MCP) for AI agents and development tools like Warp Terminal. Built with a custom MCP server implementation for full control and flexibility.
 
 ## Features
 
 - 🔒 **Safe Execution**: Advanced safety checks prevent dangerous operations
-- 🚀 **MCP Integration**: Works seamlessly with Active MCP and MCP clients
+- 🚀 **Custom MCP Server**: Built-in MCP server with no external dependencies
 - 📊 **Read-Only Queries**: Safe database querying with automatic result limiting
 - 🔍 **Code Analysis**: Dry-run capabilities to analyze code before execution
 - 📝 **Audit Logging**: Complete execution logging for security and debugging
@@ -27,12 +26,6 @@ And then execute:
 $ bundle install
 ```
 
-Install ActionMCP if not already installed:
-
-```bash
-$ bundle add actionmcp
-```
-
 Run the installer:
 
 ```bash
@@ -42,9 +35,8 @@ $ rails generate rails_active_mcp:install
 This will:
 
 - Create an initializer with configuration options
-- Mount the ActionMCP engine at `/mcp`
-- Create MCP tools in `app/mcp/tools/`
-- Create a `mcp.ru` server file
+- Mount the custom MCP server at `/mcp`
+- Create a `mcp.ru` server file for standalone usage
 - Set up audit logging
 
 ## Configuration
@@ -75,9 +67,38 @@ RailsActiveMcp.configure do |config|
 end
 ```
 
+## Running the MCP Server
+
+You have several options for running the MCP server:
+
+### Option 1: Rails-mounted (recommended for development)
+
+```bash
+$ rails server
+# MCP server available at http://localhost:3000/mcp
+```
+
+### Option 2: Standalone server
+
+```bash
+$ bundle exec rails-active-mcp-server
+# Default: http://localhost:3001
+
+# Custom host/port
+$ bundle exec rails-active-mcp-server --host 0.0.0.0 --port 8080
+```
+
+### Option 3: Using rackup
+
+```bash
+$ rackup mcp.ru -p 3001
+```
+
 ## Usage
 
-### With Warp Terminal
+### With MCP Clients
+
+#### Warp Terminal Integration
 
 Add to your Warp MCP configuration:
 
@@ -91,6 +112,7 @@ Add to your Warp MCP configuration:
         "POST",
         "-H",
         "Content-Type: application/json",
+        "-d", "@-",
         "http://localhost:3000/mcp"
       ]
     }
@@ -103,6 +125,16 @@ Then in Warp, you can use prompts like:
 - "Show me all users created in the last week"
 - "What's the average order value?"
 - "Check the User model schema and associations"
+
+#### Claude Desktop / Cline
+
+Use the same configuration format as above, pointing to your MCP server.
+
+#### Custom MCP Clients
+
+The server implements the MCP protocol (JSONRPC 2.0). Connect any MCP-compatible client to:
+- **Rails-mounted**: `http://localhost:3000/mcp`
+- **Standalone**: `http://localhost:3001`
 
 ### Direct Usage
 
@@ -122,69 +154,44 @@ puts analysis[:estimated_risk] # => :critical
 
 ### Available MCP Tools
 
-#### `console_execute`
+#### `rails_console_execute`
 
 Execute Ruby code with safety checks:
 
 ```json
 {
-  "tool": "console_execute",
-  "arguments": {
-    "code": "User.where(active: true).count",
-    "safe_mode": true,
-    "timeout": 30
+  "method": "tools/call",
+  "params": {
+    "name": "rails_console_execute",
+    "arguments": {
+      "code": "User.where(active: true).count",
+      "timeout": 30
+    }
   }
 }
 ```
 
-#### `safe_query`
+#### Additional Tools
 
-Execute read-only database queries:
+The custom server includes built-in support for the main console execute tool. You can extend the server with additional tools by modifying the `McpServer` class in `lib/rails_active_mcp/mcp_server.rb`:
 
-```json
-{
-  "tool": "safe_query",
-  "arguments": {
-    "model": "User",
-    "method": "where",
-    "args": [
-      {
-        "active": true
-      }
-    ],
-    "limit": 50
-  }
-}
+```ruby
+def register_default_tools
+  # Built-in console execution tool
+  register_tool('rails_console_execute', 'Execute Ruby code safely', {...})
+
+  # Your custom tools
+  register_tool('my_custom_tool', 'Description', {...}) do |args|
+    # Tool implementation
+  end
+end
 ```
 
-#### `dry_run`
-
-Analyze code safety without execution:
-
-```json
-{
-  "tool": "dry_run",
-  "arguments": {
-    "code": "User.delete_all"
-  }
-}
-```
-
-#### `model_info`
-
-Get model schema and associations:
-
-```json
-{
-  "tool": "model_info",
-  "arguments": {
-    "model": "User",
-    "include_schema": true,
-    "include_associations": true,
-    "include_validations": true
-  }
-}
-```
+Common tool implementations can include:
+- Code safety analysis
+- Read-only database queries
+- Model schema inspection
+- Custom business logic tools
 
 ## Safety Features
 
@@ -288,19 +295,33 @@ config.strict_mode!
 # - Fast timeouts
 ```
 
-## Integration with ActionMCP
+## Custom MCP Server Architecture
+
+Rails Active MCP provides a custom-built MCP server implementation with no external dependencies. The server:
+
+- Implements the Model Context Protocol (MCP)
+- Uses JSON-RPC 2.0 over HTTP
+- Supports essential MCP methods:
+  - `initialize` - Server capabilities
+  - `tools/list` - Available tools
+  - `tools/call` - Execute tools
+  - `resources/list` and `resources/read` - Resource access
+
+### Server Implementation
+
+The core server is implemented in `lib/rails_active_mcp/mcp_server.rb` and follows Rack middleware conventions, making it easy to mount in Rails or run standalone.
+
+### Extending the Server
+
+You can add custom tools and resources to the server by extending the registration methods:
 
 ```ruby
-# In config/initializers/rails_active_mcp.rb
-if defined?(ActionMCP)
-  # Tools will be auto-discovered from app/mcp/tools/
-  # Make sure to mount the ActionMCP engine in routes.rb:
-  # mount ActionMCP::Engine, at: "/mcp"
+# In an initializer or plugin
+RailsActiveMcp.server.instance_eval do
+  register_tool('my_custom_tool', 'Description', {...}) do |args|
+    # Tool implementation
+  end
 end
-
-# You'll need to create a mcp.ru file:
-# require_relative "config/environment"
-# run ActionMCP::Engine
 ```
 
 ## Error Handling
@@ -332,6 +353,14 @@ This gem provides multiple layers of security, but always:
 - Use read-only database replicas in production when possible
 - Restrict model access as needed
 - Test safety patterns thoroughly
+
+### Benefits of the Custom MCP Server
+
+- **No External Dependencies**: Reduced attack surface with minimal dependencies
+- **Full Control**: Complete visibility into the server implementation
+- **Customizable Security**: Easily add additional security layers or checks
+- **Simplified Deployment**: No need to manage external MCP server dependencies
+- **Protocol Isolation**: MCP protocol implementation is self-contained and auditable
 
 For security issues, please email [security@yourcompany.com].
 

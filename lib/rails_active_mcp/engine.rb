@@ -23,14 +23,6 @@ module RailsActiveMcp
       RailsActiveMcp.config.validate!
     end
 
-    initializer 'rails_active_mcp.register_tools' do
-      # Register MCP tools with ActionMCP if it's available
-      if defined?(ActionMCP) && Rails.logger
-        # Tools will be auto-discovered from the tools directory
-        Rails.logger&.info 'Rails Active MCP tools registered with ActionMCP'
-      end
-    end
-
     # Add our tools directory to the load path
     config.autoload_paths << root.join('lib', 'rails_active_mcp', 'tools')
 

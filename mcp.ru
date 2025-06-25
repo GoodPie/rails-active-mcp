@@ -1,7 +1,5 @@
 require_relative "config/environment"
+require_relative "lib/rails_active_mcp"
 
-# Load Rails Console MCP tools
-Dir[Rails.root.join("app/mcp/tools/**/*.rb")].each { |f| require f }
-
-# Run the ActionMCP engine
-run ActionMCP::Engine
+# Run the Rails Active MCP server
+run RailsActiveMcp::McpServer.new

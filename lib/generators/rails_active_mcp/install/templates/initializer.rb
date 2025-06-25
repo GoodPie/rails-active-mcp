@@ -1,10 +1,13 @@
+require 'rails_active_mcp'
+
+
 RailsActiveMcp.configure do |config|
   # Enable/disable the MCP server
   config.enabled = true
 
   # Safety configuration
-  config.safe_mode = Rails.env.production?  # Always safe in production
-  config.default_timeout = 30  # seconds
+  config.safe_mode = Rails.env.production? # Always safe in production
+  config.default_timeout = 30 # seconds
   config.max_results = 100
 
   # Model access control
@@ -21,11 +24,11 @@ RailsActiveMcp.configure do |config|
   # Environment-specific settings
   case Rails.env
   when 'production'
-    config.production_mode!  # Very strict settings
+    config.production_mode! # Very strict settings
   when 'development'
-    config.permissive_mode!  # More relaxed for development
+    config.permissive_mode! # More relaxed for development
   when 'test'
-    config.strict_mode!      # Safe for testing
+    config.strict_mode! # Safe for testing
   end
 
   # Add custom safety patterns
@@ -33,11 +36,4 @@ RailsActiveMcp.configure do |config|
 
   # Operations that require manual confirmation
   config.require_confirmation_for = [:delete, :destroy, :update_all, :delete_all]
-end
-
-# Optional: Configure ActionMCP integration
-if defined?(ActionMCP)
-  # Tools will be auto-discovered from app/mcp/tools/
-  # Make sure to mount the ActionMCP engine in routes.rb:
-  # mount ActionMCP::Engine, at: "/mcp"
 end
