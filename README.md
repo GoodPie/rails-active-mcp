@@ -362,7 +362,7 @@ This gem provides multiple layers of security, but always:
 - **Simplified Deployment**: No need to manage external MCP server dependencies
 - **Protocol Isolation**: MCP protocol implementation is self-contained and auditable
 
-For security issues, please email [security@yourcompany.com].
+For security issues, please report using Github Issues.
 
 ## Changelog
 

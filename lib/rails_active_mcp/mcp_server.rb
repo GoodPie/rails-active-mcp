@@ -17,7 +17,7 @@ module RailsActiveMcp
 
     def call(env)
       request = Rack::Request.new(env)
-      
+
       return [405, {}, ['Method Not Allowed']] unless request.post?
       return [400, {}, ['Invalid Content-Type']] unless json_request?(request)
 
@@ -25,7 +25,7 @@ module RailsActiveMcp
         body = request.body.read
         data = JSON.parse(body)
         response = handle_jsonrpc_request(data)
-        
+
         [200, {'Content-Type' => 'application/json'}, [response.to_json]]
       rescue JSON::ParserError
         error_response(400, 'Invalid JSON')
@@ -101,7 +101,7 @@ module RailsActiveMcp
     def handle_tools_call(data)
       tool_name = data.dig('params', 'name')
       arguments = data.dig('params', 'arguments') || {}
-      
+
       tool = @tools[tool_name]
       return jsonrpc_error(data['id'], -32602, "Tool '#{tool_name}' not found") unless tool
 
@@ -133,11 +133,12 @@ module RailsActiveMcp
       }
     end
 
-    def register_tool(name, description, input_schema, &handler)
+    def register_tool(name, description, input_schema, annotations = {}, &handler)
       @tools[name] = {
         name: name,
         description: description,
         input_schema: input_schema,
+        annotations: annotations,
         handler: handler
       }
     end
@@ -194,7 +195,7 @@ module RailsActiveMcp
       return "Rails Active MCP is disabled" unless RailsActiveMcp.config.enabled
 
       executor = RailsActiveMcp::ConsoleExecutor.new(RailsActiveMcp.config)
-      
+
       begin
         result = executor.execute(
           args['code'],
@@ -247,7 +248,7 @@ module RailsActiveMcp
         # Only allow safe read-only methods
         safe_methods = %w[find find_by where select count sum average maximum minimum first last pluck ids exists? empty? any? many? include?]
         query_method = args['query'].split('.').first
-        
+
         return "Unsafe query method: #{query_method}" unless safe_methods.include?(query_method)
 
         result = model_class.instance_eval(args['query'])
