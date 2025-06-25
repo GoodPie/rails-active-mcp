@@ -84,11 +84,18 @@ module RailsActiveMcp
 
     def handle_tools_list(data)
       tools_array = @tools.values.map do |tool|
-        {
+        tool_def = {
           name: tool[:name],
           description: tool[:description],
           inputSchema: tool[:input_schema]
         }
+
+        # Add annotations if present
+        if tool[:annotations] && !tool[:annotations].empty?
+          tool_def[:annotations] = tool[:annotations]
+        end
+
+        tool_def
       end
 
       {
@@ -156,6 +163,14 @@ module RailsActiveMcp
             capture_output: { type: 'boolean', description: 'Capture console output', default: true }
           },
           required: ['code']
+        },
+        # Add MCP tool annotations
+        {
+          title: 'Rails Console Executor',
+          readOnlyHint: false,
+          destructiveHint: true,
+          idempotentHint: false,
+          openWorldHint: false
         }
       ) do |args|
         execute_console_code(args)
@@ -170,6 +185,14 @@ module RailsActiveMcp
             model_name: { type: 'string', description: 'Name of the model to inspect' }
           },
           required: ['model_name']
+        },
+        # Safe read-only tool
+        {
+          title: 'Rails Model Inspector',
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false
         }
       ) do |args|
         get_model_info(args['model_name'])
@@ -185,9 +208,38 @@ module RailsActiveMcp
             model: { type: 'string', description: 'Model class name' }
           },
           required: ['query', 'model']
+        },
+        # Safe read-only query tool
+        {
+          title: 'Rails Safe Query Executor',
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false
         }
       ) do |args|
         execute_safe_query(args)
+      end
+
+      register_tool(
+        'rails_dry_run',
+        'Analyze Ruby code safety without execution',
+        {
+          type: 'object',
+          properties: {
+            code: { type: 'string', description: 'Ruby code to analyze' }
+          },
+          required: ['code']
+        },
+        {
+          title: 'Rails Code Safety Analyzer',
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false
+        }
+      ) do |args|
+        dry_run_analysis(args['code'])
       end
     end
 
@@ -257,6 +309,42 @@ module RailsActiveMcp
         "Model '#{args['model']}' not found"
       rescue => e
         "Error executing query: #{e.message}"
+      end
+    end
+
+    def dry_run_analysis(code)
+      return "Rails Active MCP is disabled" unless RailsActiveMcp.config.enabled
+
+      executor = RailsActiveMcp::ConsoleExecutor.new(RailsActiveMcp.config)
+
+      begin
+        analysis = executor.dry_run(code)
+
+        output = []
+        output << "Code: #{analysis[:code]}"
+        output << "Safe: #{analysis[:safety_analysis][:safe] ? 'Yes' : 'No'}"
+        output << "Read-only: #{analysis[:safety_analysis][:read_only] ? 'Yes' : 'No'}"
+        output << "Risk level: #{analysis[:estimated_risk]}"
+        output << "Would execute: #{analysis[:would_execute] ? 'Yes' : 'No'}"
+        output << "Summary: #{analysis[:safety_analysis][:summary]}"
+
+        if analysis[:safety_analysis][:violations].any?
+          output << "\nViolations:"
+          analysis[:safety_analysis][:violations].each do |violation|
+            output << "  - #{violation[:description]} (#{violation[:severity]})"
+          end
+        end
+
+        if analysis[:recommendations].any?
+          output << "\nRecommendations:"
+          analysis[:recommendations].each do |rec|
+            output << "  - #{rec}"
+          end
+        end
+
+        output.join("\n")
+      rescue => e
+        "Analysis failed: #{e.message}"
       end
     end
 
