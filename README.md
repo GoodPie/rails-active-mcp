@@ -51,6 +51,11 @@ RailsActiveMcp.configure do |config|
   config.default_timeout = 30
   config.max_results = 100
 
+  # Server configuration
+  config.server_mode = :stdio # :stdio for Claude Desktop, :http for web
+  config.server_host = 'localhost'
+  config.server_port = 3001
+
   # Model access control
   config.allowed_models = %w[User Post Comment] # Empty = all allowed
   config.blocked_models = %w[AdminUser Secret]
@@ -64,6 +69,10 @@ RailsActiveMcp.configure do |config|
   config.production_mode! # Very strict
   config.strict_mode! # Safe defaults
   config.permissive_mode! # Development friendly
+  
+  # Server mode shortcuts
+  config.stdio_mode! # Set stdio mode for Claude Desktop
+  config.http_mode!(host: '0.0.0.0', port: 8080) # Set HTTP mode with custom host/port
 end
 ```
 
@@ -71,13 +80,18 @@ end
 
 You have several options for running the MCP server:
 
-### Option 1: Stdio server (recommended for Claude Desktop)
+### Option 1: Use configured mode (recommended)
 
 ```bash
-$ bundle exec rails-active-mcp-server stdio
+$ bundle exec rails-active-mcp-server
 ```
 
-This mode is required for Claude Desktop integration and other MCP clients that use stdio transport.
+This will use the server mode configured in your initializer (`:stdio` by default). You can override the mode:
+
+```bash
+$ bundle exec rails-active-mcp-server stdio  # Force stdio mode
+$ bundle exec rails-active-mcp-server http   # Force HTTP mode
+```
 
 ### Option 2: Rails-mounted (HTTP, good for development)
 

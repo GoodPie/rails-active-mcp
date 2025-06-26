@@ -12,20 +12,27 @@ Next Steps:
 
 1. Review and customize the configuration in config/initializers/rails_active_mcp.rb
 
-2. Start the MCP server:
-   Option A: Rails-mounted server (HTTP)
+2. Configure server mode in config/initializers/rails_active_mcp.rb:
+   config.server_mode = :stdio    # For Claude Desktop (default)
+   config.server_mode = :http     # For HTTP-based integrations
+   config.server_host = 'localhost'
+   config.server_port = 3001
+
+3. Start the MCP server:
+   Option A: Use configured mode (RECOMMENDED)
+   $ bundle exec rails-active-mcp-server
+
+   Option B: Override mode via command line
+   $ bundle exec rails-active-mcp-server stdio  # Force stdio mode
+   $ bundle exec rails-active-mcp-server http   # Force HTTP mode
+
+   Option C: Rails-mounted server (HTTP)
    $ rails server
 
-   Option B: Standalone HTTP server
-   $ bundle exec rails-active-mcp-server http
-
-   Option C: Using rackup
+   Option D: Using rackup
    $ rackup mcp.ru -p 3001
 
-   Option D: Stdio server for Claude Desktop (RECOMMENDED)
-   $ bundle exec rails-active-mcp-server stdio
-
-3. For Claude Desktop integration, add this to your Claude Desktop configuration:
+4. For Claude Desktop integration, add this to your Claude Desktop configuration:
 
    Location: ~/.config/claude-desktop/claude_desktop_config.json (Linux/macOS)
    Location: %APPDATA%\Claude\claude_desktop_config.json (Windows)
@@ -52,7 +59,7 @@ Next Steps:
      }
    }
 
-4. For other MCP clients (HTTP-based), add this to your MCP configuration:
+5. For other MCP clients (HTTP-based), add this to your MCP configuration:
    {
      "mcpServers": {
        "rails-console": {
@@ -62,7 +69,7 @@ Next Steps:
      }
    }
 
-5. Test the installation:
+6. Test the installation:
    $ rails console
    > RailsActiveMcp.safe?("User.count")
    > RailsActiveMcp.execute("User.count")
@@ -84,6 +91,26 @@ Security Notes:
 Transport Modes:
 - stdio: For Claude Desktop and compatible MCP clients (recommended)
 - http: For HTTP-based integrations and web applications
+
+Configuration Examples:
+
+For Claude Desktop (default):
+  config.server_mode = :stdio
+
+For HTTP web integrations:
+  config.server_mode = :http
+  config.server_host = 'localhost'
+  config.server_port = 3001
+
+For Docker/remote access:
+  config.http_mode!(host: '0.0.0.0', port: 8080)
+
+For development with multiple transport modes:
+  if Rails.env.development?
+    config.stdio_mode!  # Claude Desktop
+  else
+    config.http_mode!(host: '0.0.0.0', port: 3001)  # Production HTTP
+  end
 
 Custom MCP Server Benefits:
 - No external dependencies

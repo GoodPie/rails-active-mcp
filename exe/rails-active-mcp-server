@@ -6,10 +6,29 @@ require 'rack/handler/webrick'
 require 'json'
 require_relative '../lib/rails_active_mcp'
 
-# Parse command line options
-transport = ARGV[0] || 'http'
-port = ARGV.include?('--port') ? ARGV[ARGV.index('--port') + 1].to_i : 3001
-host = ARGV.include?('--host') ? ARGV[ARGV.index('--host') + 1] : 'localhost'
+# Load Rails configuration if available
+require_relative '../config/environment' if File.exist?('config/environment.rb')
+
+# Parse command line options with config defaults
+default_mode = if defined?(RailsActiveMcp) && RailsActiveMcp.respond_to?(:config)
+                 RailsActiveMcp.config.server_mode.to_s
+               else
+                 'stdio'
+               end
+default_port = if defined?(RailsActiveMcp) && RailsActiveMcp.respond_to?(:config)
+                 RailsActiveMcp.config.server_port
+               else
+                 3001
+               end
+default_host = if defined?(RailsActiveMcp) && RailsActiveMcp.respond_to?(:config)
+                 RailsActiveMcp.config.server_host
+               else
+                 'localhost'
+               end
+
+transport = ARGV[0] || default_mode
+port = ARGV.include?('--port') ? ARGV[ARGV.index('--port') + 1].to_i : default_port
+host = ARGV.include?('--host') ? ARGV[ARGV.index('--host') + 1] : default_host
 
 case transport
 when 'stdio'

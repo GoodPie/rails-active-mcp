@@ -5,7 +5,8 @@ module RailsActiveMcp
     attr_accessor :enabled, :safe_mode, :default_timeout, :max_results,
                   :allowed_models, :blocked_models, :custom_safety_patterns,
                   :log_executions, :audit_file, :enable_mutation_tools,
-                  :require_confirmation_for, :execution_environment
+                  :require_confirmation_for, :execution_environment, :server_mode,
+                  :server_host, :server_port
 
     def initialize
       @enabled = true
@@ -17,10 +18,16 @@ module RailsActiveMcp
       @custom_safety_patterns = []
       @log_executions = true
       # Safe Rails.root access
-      @audit_file = rails_root_join("log", "rails_active_mcp.log") if defined?(Rails) && Rails.respond_to?(:root) && Rails.root
+      if defined?(Rails) && Rails.respond_to?(:root) && Rails.root
+        @audit_file = rails_root_join('log',
+                                      'rails_active_mcp.log')
+      end
       @enable_mutation_tools = false
-      @require_confirmation_for = [:delete, :destroy, :update_all, :delete_all]
+      @require_confirmation_for = %i[delete destroy update_all delete_all]
       @execution_environment = :current # :current, :sandbox, :readonly_replica
+      @server_mode = :stdio # :stdio, :http
+      @server_host = 'localhost'
+      @server_port = 3001
     end
 
     # Safety configuration
@@ -42,7 +49,7 @@ module RailsActiveMcp
       strict_mode!
       @execution_environment = :readonly_replica
       @log_executions = true
-      @require_confirmation_for = [:delete, :destroy, :update, :create, :save]
+      @require_confirmation_for = %i[delete destroy update create save]
     end
 
     # Model access configuration
@@ -56,6 +63,21 @@ module RailsActiveMcp
 
     def add_safety_pattern(pattern, description = nil)
       @custom_safety_patterns << { pattern: pattern, description: description }
+    end
+
+    # Server configuration
+    def stdio_mode!
+      @server_mode = :stdio
+    end
+
+    def http_mode!(host: 'localhost', port: 3001)
+      @server_mode = :http
+      @server_host = host
+      @server_port = port
+    end
+
+    def server_mode_valid?
+      %i[stdio http].include?(@server_mode)
     end
 
     # Validation
@@ -73,13 +95,15 @@ module RailsActiveMcp
     end
 
     def validate!
-      raise ArgumentError, "timeout must be positive" if @default_timeout <= 0
-      raise ArgumentError, "max_results must be positive" if @max_results <= 0
+      raise ArgumentError, 'timeout must be positive' if @default_timeout <= 0
+      raise ArgumentError, 'max_results must be positive' if @max_results <= 0
+      raise ArgumentError, "invalid server_mode: #{@server_mode}" unless server_mode_valid?
+      raise ArgumentError, 'server_port must be positive' if @server_port <= 0
 
-      if defined?(Rails) && @audit_file
-        audit_dir = File.dirname(@audit_file)
-        FileUtils.mkdir_p(audit_dir) unless File.directory?(audit_dir)
-      end
+      return unless defined?(Rails) && @audit_file
+
+      audit_dir = File.dirname(@audit_file)
+      FileUtils.mkdir_p(audit_dir) unless File.directory?(audit_dir)
     end
 
     private

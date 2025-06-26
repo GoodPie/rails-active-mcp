@@ -1,6 +1,5 @@
 require 'rails_active_mcp'
 
-
 RailsActiveMcp.configure do |config|
   # Enable/disable the MCP server
   config.enabled = true
@@ -19,7 +18,12 @@ RailsActiveMcp.configure do |config|
 
   # Logging and auditing
   config.log_executions = true
-  config.audit_file = Rails.root.join("log", "rails_active_mcp.log")
+  config.audit_file = Rails.root.join('log', 'rails_active_mcp.log')
+
+  # Server configuration
+  config.server_mode = :stdio # :stdio for Claude Desktop, :http for web integrations
+  config.server_host = 'localhost'
+  config.server_port = 3001
 
   # Environment-specific settings
   case Rails.env
@@ -35,5 +39,5 @@ RailsActiveMcp.configure do |config|
   # config.add_safety_pattern(/CustomDangerousMethod/, "Custom dangerous operation")
 
   # Operations that require manual confirmation
-  config.require_confirmation_for = [:delete, :destroy, :update_all, :delete_all]
+  config.require_confirmation_for = %i[delete destroy update_all delete_all]
 end
