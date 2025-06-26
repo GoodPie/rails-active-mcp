@@ -31,11 +31,12 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Dependencies
-  spec.add_dependency 'concurrent-ruby', '~> 1.3.5'
-  spec.add_dependency 'rails', '>= 7.0'
-  spec.add_dependency 'timeout', '~> 0.4'
+  spec.add_runtime_dependency 'concurrent-ruby', '~> 1.3.5'
+  spec.add_runtime_dependency 'rails', '~> 7.0'
+
   spec.add_dependency 'json', '~> 2.0'
   spec.add_dependency 'rack', '~> 3.0'
+  spec.add_dependency 'timeout', '~> 0.4'
 
   # Development dependencies - keep versions consistent with Gemfile
   spec.add_development_dependency 'factory_bot_rails', '~> 6.0'
