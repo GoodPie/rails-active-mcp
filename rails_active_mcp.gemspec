@@ -37,6 +37,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'json', '~> 2.0'
   spec.add_dependency 'rack', '~> 3.0'
   spec.add_dependency 'timeout', '~> 0.4'
+  spec.add_dependency 'webrick', '~> 1.8'
 
   # Development dependencies - keep versions consistent with Gemfile
   spec.add_development_dependency 'factory_bot_rails', '~> 6.0'

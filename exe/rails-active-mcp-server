@@ -2,7 +2,6 @@
 # frozen_string_literal: true
 
 require 'rack'
-require 'rack/handler/webrick'
 require 'json'
 require_relative '../lib/rails_active_mcp'
 
@@ -51,12 +50,19 @@ when 'http'
   puts 'Press Ctrl+C to stop'
 
   begin
+    require 'webrick'
+    require 'rack/handler/webrick'
+
     Rack::Handler::WEBrick.run(
       RailsActiveMcp::McpServer.new,
       Port: port,
       Host: host,
       Logger: WEBrick::Log.new(nil, WEBrick::BasicLog::WARN)
     )
+  rescue LoadError => e
+    puts 'Error: WEBrick not available. Please install: gem install webrick'
+    puts 'Or use stdio mode for Claude Desktop: rails-active-mcp-server stdio'
+    exit(1)
   rescue Interrupt
     puts "\nShutting down server..."
   end
