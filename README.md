@@ -1,6 +1,6 @@
 # Rails Active MCP
 
-A Ruby gem that provides secure Rails console access through Model Context Protocol (MCP) for AI agents and development tools like Warp Terminal. Built with a custom MCP server implementation for full control and flexibility.
+A Ruby gem that provides secure Rails console access through Model Context Protocol (MCP) for AI agents and development tools like Claude Desktop, Warp Terminal, and other MCP clients. Built with a custom MCP server implementation for full control and flexibility.
 
 ## Features
 
@@ -71,24 +71,32 @@ end
 
 You have several options for running the MCP server:
 
-### Option 1: Rails-mounted (recommended for development)
+### Option 1: Stdio server (recommended for Claude Desktop)
+
+```bash
+$ bundle exec rails-active-mcp-server stdio
+```
+
+This mode is required for Claude Desktop integration and other MCP clients that use stdio transport.
+
+### Option 2: Rails-mounted (HTTP, good for development)
 
 ```bash
 $ rails server
 # MCP server available at http://localhost:3000/mcp
 ```
 
-### Option 2: Standalone server
+### Option 3: Standalone HTTP server
 
 ```bash
-$ bundle exec rails-active-mcp-server
+$ bundle exec rails-active-mcp-server http
 # Default: http://localhost:3001
 
 # Custom host/port
-$ bundle exec rails-active-mcp-server --host 0.0.0.0 --port 8080
+$ bundle exec rails-active-mcp-server http --host 0.0.0.0 --port 8080
 ```
 
-### Option 3: Using rackup
+### Option 4: Using rackup
 
 ```bash
 $ rackup mcp.ru -p 3001
@@ -98,7 +106,48 @@ $ rackup mcp.ru -p 3001
 
 ### With MCP Clients
 
-#### Warp Terminal Integration
+#### Claude Desktop Integration (Preferred)
+
+Add to your Claude Desktop configuration file:
+
+**Location:**
+- macOS/Linux: `~/.config/claude-desktop/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "rails-active-mcp": {
+      "command": "bundle",
+      "args": ["exec", "rails-active-mcp-server", "stdio"],
+      "cwd": "/path/to/your/rails/project"
+    }
+  }
+}
+```
+
+Or if installed globally:
+
+```json
+{
+  "mcpServers": {
+    "rails-active-mcp": {
+      "command": "rails-active-mcp-server",
+      "args": ["stdio"],
+      "cwd": "/path/to/your/rails/project"
+    }
+  }
+}
+```
+
+Then in Claude Desktop, you can use prompts like:
+
+- "Show me all users created in the last week"
+- "What's the average order value?"
+- "Check the User model schema and associations"
+- "Analyze this code for safety: User.delete_all"
+
+#### Warp Terminal Integration (HTTP)
 
 Add to your Warp MCP configuration:
 
@@ -119,16 +168,6 @@ Add to your Warp MCP configuration:
   }
 }
 ```
-
-Then in Warp, you can use prompts like:
-
-- "Show me all users created in the last week"
-- "What's the average order value?"
-- "Check the User model schema and associations"
-
-#### Claude Desktop / Cline
-
-Use the same configuration format as above, pointing to your MCP server.
 
 #### Custom MCP Clients
 
@@ -154,9 +193,11 @@ puts analysis[:estimated_risk] # => :critical
 
 ### Available MCP Tools
 
+The Rails Active MCP server provides several built-in tools that will appear in Claude Desktop:
+
 #### `rails_console_execute`
 
-Execute Ruby code with safety checks:
+Execute Ruby code with safety checks and timeout protection:
 
 ```json
 {
@@ -165,15 +206,65 @@ Execute Ruby code with safety checks:
     "name": "rails_console_execute",
     "arguments": {
       "code": "User.where(active: true).count",
-      "timeout": 30
+      "timeout": 30,
+      "safe_mode": true
     }
   }
 }
 ```
 
-#### Additional Tools
+#### `rails_model_info`
 
-The custom server includes built-in support for the main console execute tool. You can extend the server with additional tools by modifying the `McpServer` class in `lib/rails_active_mcp/mcp_server.rb`:
+Get detailed information about Rails models:
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "rails_model_info",
+    "arguments": {
+      "model_name": "User"
+    }
+  }
+}
+```
+
+#### `rails_safe_query`
+
+Execute safe, read-only database queries:
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "rails_safe_query",
+    "arguments": {
+      "query": "where(active: true).count",
+      "model": "User"
+    }
+  }
+}
+```
+
+#### `rails_dry_run`
+
+Analyze Ruby code for safety without executing:
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "rails_dry_run",
+    "arguments": {
+      "code": "User.delete_all"
+    }
+  }
+}
+```
+
+#### Adding Custom Tools
+
+You can extend the server with additional tools by modifying the `McpServer` class in `lib/rails_active_mcp/mcp_server.rb` or `lib/rails_active_mcp/stdio_server.rb`:
 
 ```ruby
 def register_default_tools

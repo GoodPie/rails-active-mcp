@@ -3,22 +3,48 @@
 
 require 'rack'
 require 'rack/handler/webrick'
+require 'json'
 require_relative '../lib/rails_active_mcp'
 
 # Parse command line options
+transport = ARGV[0] || 'http'
 port = ARGV.include?('--port') ? ARGV[ARGV.index('--port') + 1].to_i : 3001
 host = ARGV.include?('--host') ? ARGV[ARGV.index('--host') + 1] : 'localhost'
 
-puts "Starting Rails Active MCP Server on #{host}:#{port}"
-puts "Press Ctrl+C to stop"
+case transport
+when 'stdio'
+  # Stdio transport for Claude Desktop
+  require_relative '../lib/rails_active_mcp/stdio_server'
 
-begin
-  Rack::Handler::WEBrick.run(
-    RailsActiveMcp::McpServer.new,
-    Port: port,
-    Host: host,
-    Logger: WEBrick::Log.new(nil, WEBrick::BasicLog::WARN)
-  )
-rescue Interrupt
-  puts "\nShutting down server..."
+  begin
+    # Initialize Rails environment if available
+    require_relative '../config/environment' if File.exist?('config/environment.rb')
+
+    stdio_server = RailsActiveMcp::StdioServer.new
+    stdio_server.run
+  rescue Interrupt
+    exit(0)
+  end
+
+when 'http'
+  # HTTP transport for other integrations
+  puts "Starting Rails Active MCP Server on #{host}:#{port}"
+  puts 'Press Ctrl+C to stop'
+
+  begin
+    Rack::Handler::WEBrick.run(
+      RailsActiveMcp::McpServer.new,
+      Port: port,
+      Host: host,
+      Logger: WEBrick::Log.new(nil, WEBrick::BasicLog::WARN)
+    )
+  rescue Interrupt
+    puts "\nShutting down server..."
+  end
+
+else
+  puts 'Usage: rails-active-mcp-server [stdio|http] [--port PORT] [--host HOST]'
+  puts '  stdio: For Claude Desktop integration'
+  puts '  http:  For HTTP-based integrations (default)'
+  exit(1)
 end

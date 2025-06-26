@@ -1,0 +1,209 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'optparse'
+
+# Script to help debug Rails Active MCP server using MCP Inspector
+# Based on https://modelcontextprotocol.io/docs/tools/debugging
+
+class McpDebugger
+  def initialize
+    @options = {
+      mode: 'inspector',
+      debug: false,
+      port: 3001,
+      host: 'localhost'
+    }
+    parse_options
+  end
+
+  def run
+    case @options[:mode]
+    when 'inspector'
+      run_inspector
+    when 'test'
+      run_tests
+    when 'logs'
+      show_logs
+    else
+      show_help
+    end
+  end
+
+  private
+
+  def parse_options
+    OptionParser.new do |opts|
+      opts.banner = "Usage: #{File.basename($0)} [options]"
+
+      opts.on('-m', '--mode MODE', %i[inspector test logs],
+              'Debug mode (inspector, test, logs)') do |mode|
+        @options[:mode] = mode
+      end
+
+      opts.on('-d', '--debug', 'Enable debug logging') do |debug|
+        @options[:debug] = debug
+      end
+
+      opts.on('-p', '--port PORT', Integer, 'Port for HTTP server') do |port|
+        @options[:port] = port
+      end
+
+      opts.on('-h', '--help', 'Show this help message') do
+        puts opts
+        exit
+      end
+    end.parse!
+  end
+
+  def run_inspector
+    puts '🔍 Starting MCP Inspector for Rails Active MCP Server'
+    puts '=' * 60
+
+    if in_rails_project?
+      puts '✅ Rails project detected'
+      puts "📁 Working directory: #{Dir.pwd}"
+
+      # Set debug environment
+      ENV['RAILS_MCP_DEBUG'] = '1' if @options[:debug]
+
+      puts "\n🚀 Launching MCP Inspector..."
+      puts 'This will:'
+      puts '  - Start the Rails Active MCP server in stdio mode'
+      puts '  - Connect the MCP Inspector for interactive testing'
+      puts '  - Allow you to test all tools and see debug output'
+
+      cmd = "npx @modelcontextprotocol/inspector #{inspector_command}"
+      puts "\n💻 Running: #{cmd}"
+      puts "\n" + '=' * 60
+
+      exec(cmd)
+
+    else
+      puts '❌ Not in a Rails project directory'
+      puts 'Please run this script from your Rails application root'
+      exit(1)
+    end
+  end
+
+  def inspector_command
+    if gem_installed_globally?
+      'rails-active-mcp-server stdio'
+    else
+      'bundle exec rails-active-mcp-server stdio'
+    end
+  end
+
+  def run_tests
+    puts '🧪 Running basic MCP server tests'
+    puts '=' * 60
+
+    # Test stdio server
+    puts "\n1. Testing stdio server startup..."
+    test_stdio_server
+
+    # Test HTTP server (if available)
+    puts "\n2. Testing HTTP server..."
+    test_http_server
+
+    puts "\n✅ All tests completed!"
+  end
+
+  def test_stdio_server
+    ENV['RAILS_MCP_DEBUG'] = '1' if @options[:debug]
+
+    # Create a simple test script
+    test_script = <<~SCRIPT
+      echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' | bundle exec rails-active-mcp-server stdio
+    SCRIPT
+
+    puts 'Testing server initialization...'
+    result = system(test_script)
+
+    if result
+      puts '✅ Stdio server responds correctly'
+    else
+      puts '❌ Stdio server test failed'
+    end
+  end
+
+  def test_http_server
+    puts 'Starting HTTP server for testing...'
+
+    # This would need to be implemented to test HTTP mode
+    puts '⚠️  HTTP testing not implemented yet'
+  end
+
+  def show_logs
+    puts '📋 MCP Server Logs'
+    puts '=' * 60
+
+    log_locations = [
+      '~/Library/Logs/Claude/mcp*.log',  # macOS Claude Desktop
+      'log/rails_active_mcp.log',        # Rails app log
+      '/tmp/rails_mcp_*.log'             # Temporary logs
+    ]
+
+    log_locations.each do |pattern|
+      expanded = File.expand_path(pattern)
+      Dir.glob(expanded).each do |log_file|
+        next unless File.exist?(log_file)
+
+        puts "\n📄 Log file: #{log_file}"
+        puts '-' * 40
+        puts File.read(log_file).lines.last(20).join
+      end
+    end
+
+    puts "\n💡 To follow logs in real-time (macOS):"
+    puts '   tail -f ~/Library/Logs/Claude/mcp*.log'
+  end
+
+  def show_help
+    puts <<~HELP
+      Rails Active MCP Debugging Helper
+      ================================
+
+      This script helps debug and test your Rails Active MCP server.
+
+      Usage examples:
+        #{File.basename($0)} --mode inspector    # Launch MCP Inspector
+        #{File.basename($0)} --mode test         # Run basic tests
+        #{File.basename($0)} --mode logs         # Show recent logs
+        #{File.basename($0)} --debug             # Enable debug logging
+
+      Inspector Mode:
+        Opens the MCP Inspector connected to your Rails MCP server.
+        Use this to interactively test tools and see debug output.
+
+      Test Mode:
+        Runs basic connectivity and functionality tests.
+      #{'  '}
+      Logs Mode:
+        Shows recent log output from various sources.
+
+      Debug Tips:
+        - Use --debug to enable verbose logging
+        - Check Claude Desktop logs: ~/Library/Logs/Claude/mcp*.log
+        - Ensure your Rails app can start without errors
+        - Verify the working directory is your Rails project root
+
+      MCP Inspector Documentation:
+        https://modelcontextprotocol.io/docs/tools/inspector
+      #{'  '}
+      Debugging Guide:
+        https://modelcontextprotocol.io/docs/tools/debugging
+    HELP
+  end
+
+  def in_rails_project?
+    File.exist?('config/environment.rb') && File.exist?('Gemfile')
+  end
+
+  def gem_installed_globally?
+    system('which rails-active-mcp-server > /dev/null 2>&1')
+  end
+end
+
+# Run the debugger
+McpDebugger.new.run
