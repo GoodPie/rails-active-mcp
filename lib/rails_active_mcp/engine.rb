@@ -6,6 +6,13 @@ module RailsActiveMcp
 
     config.rails_active_mcp = ActiveSupport::OrderedOptions.new
 
+    # Add generators configuration
+    config.generators do |g|
+      g.test_framework :rspec, fixture: false
+      g.assets false
+      g.helper false
+    end
+
     initializer 'rails_active_mcp.configure' do |app|
       # Load configuration from Rails config if present
       if app.config.respond_to?(:rails_active_mcp)
@@ -28,5 +35,31 @@ module RailsActiveMcp
 
     # Ensure our tools are eager loaded in production
     config.eager_load_paths << root.join('lib', 'rails_active_mcp', 'tools')
+
+    # Add rake tasks
+    rake_tasks do
+      load 'rails_active_mcp/tasks.rake'
+    end
+
+    # Console hook for easier access
+    console do
+      # Add convenience methods to console
+      Rails::ConsoleMethods.include(RailsActiveMcp::ConsoleMethods) if defined?(Rails::ConsoleMethods)
+    end
+  end
+
+  # Console convenience methods
+  module ConsoleMethods
+    def mcp_execute(code, **options)
+      RailsActiveMcp.execute(code, **options)
+    end
+
+    def mcp_safe?(code)
+      RailsActiveMcp.safe?(code)
+    end
+
+    def mcp_config
+      RailsActiveMcp.config
+    end
   end
 end

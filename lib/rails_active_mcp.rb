@@ -6,8 +6,9 @@ require_relative 'rails_active_mcp/configuration'
 require_relative 'rails_active_mcp/safety_checker'
 require_relative 'rails_active_mcp/console_executor'
 require_relative 'rails_active_mcp/mcp_server'
-require_relative 'rails_active_mcp/engine' if defined?(Rails)
 
+# Load Engine for Rails integration
+require_relative 'rails_active_mcp/engine' if defined?(Rails)
 
 module RailsActiveMcp
   class Error < StandardError; end
@@ -54,6 +55,3 @@ module RailsActiveMcp
     end
   end
 end
-
-# Auto-configure for Rails
-require_relative 'rails_active_mcp/railtie' if defined?(Rails)
