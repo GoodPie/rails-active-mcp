@@ -3,10 +3,8 @@
 
 require 'rack'
 require 'json'
+require 'stringio'
 require_relative '../lib/rails_active_mcp'
-
-# Load Rails configuration if available
-require_relative '../config/environment' if File.exist?('config/environment.rb')
 
 # Parse command line options with config defaults
 default_mode = if defined?(RailsActiveMcp) && RailsActiveMcp.respond_to?(:config)
@@ -35,8 +33,21 @@ when 'stdio'
   require_relative '../lib/rails_active_mcp/stdio_server'
 
   begin
-    # Initialize Rails environment if available
-    require_relative '../config/environment' if File.exist?('config/environment.rb')
+    # Initialize Rails environment if available (from current working directory)
+    if File.exist?('config/environment.rb')
+      # Suppress Rails output to avoid interfering with MCP JSON protocol
+      original_stdout = $stdout
+      $stdout = StringIO.new
+
+      begin
+        require './config/environment'
+      rescue StandardError => e
+        # Log to stderr but don't fail - the server can work without Rails
+        warn "Warning: Could not load Rails environment: #{e.message}"
+      ensure
+        $stdout = original_stdout
+      end
+    end
 
     stdio_server = RailsActiveMcp::StdioServer.new
     stdio_server.run
