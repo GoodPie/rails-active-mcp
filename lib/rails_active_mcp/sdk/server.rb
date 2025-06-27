@@ -47,8 +47,8 @@ module RailsActiveMcp
         transport.open
       rescue StandardError => e
         # Log to stderr (which is redirected to file) and re-raise
-        warn "[#{Time.now}] [RAILS-MCP] FATAL: SDK Server crashed: #{e.message}"
-        warn "[#{Time.now}] [RAILS-MCP] FATAL: #{e.backtrace.join("\n")}"
+        warn "[#{Time.zone.now}] [RAILS-MCP] FATAL: SDK Server crashed: #{e.message}"
+        warn "[#{Time.zone.now}] [RAILS-MCP] FATAL: #{e.backtrace.join("\n")}"
         raise
       ensure
         restore_output_streams
@@ -68,7 +68,7 @@ module RailsActiveMcp
 
         # Create log directory
         log_dir = File.join(Dir.pwd, 'log')
-        FileUtils.mkdir_p(log_dir) unless Dir.exist?(log_dir)
+        FileUtils.mkdir_p(log_dir)
 
         # Redirect stderr to log file
         stderr_log = File.join(log_dir, 'rails_mcp_stderr.log')
@@ -81,7 +81,7 @@ module RailsActiveMcp
         $stdout = @stdout_buffer
 
         # Log redirection setup
-        warn "[#{Time.now}] [RAILS-MCP] INFO: Output redirection enabled. stderr -> #{stderr_log}"
+        warn "[#{Time.zone.now}] [RAILS-MCP] INFO: Output redirection enabled. stderr -> #{stderr_log}"
       end
 
       def ensure_output_redirection_for_stdio
@@ -91,12 +91,12 @@ module RailsActiveMcp
         # Check if anything was captured during initialization
         if @stdout_buffer && !@stdout_buffer.string.empty?
           captured = @stdout_buffer.string
-          warn "[#{Time.now}] [RAILS-MCP] WARNING: Captured stdout during initialization: #{captured.inspect}"
+          warn "[#{Time.zone.now}] [RAILS-MCP] WARNING: Captured stdout during initialization: #{captured.inspect}"
         end
 
         # Restore original stdout for MCP communication, keep stderr redirected
         $stdout = @original_stdout
-        warn "[#{Time.now}] [RAILS-MCP] INFO: stdout restored for MCP communication, stderr remains redirected"
+        warn "[#{Time.zone.now}] [RAILS-MCP] INFO: stdout restored for MCP communication, stderr remains redirected"
       end
 
       def restore_output_streams
@@ -144,13 +144,13 @@ module RailsActiveMcp
 
       def handle_rails_exception(exception, context)
         # Use stderr which is redirected to log file
-        warn "[#{Time.now}] [RAILS-MCP] ERROR: MCP Exception: #{exception.message}"
-        warn "[#{Time.now}] [RAILS-MCP] ERROR: #{exception.backtrace.join("\n")}" if ENV['RAILS_MCP_DEBUG'] == '1'
+        warn "[#{Time.zone.now}] [RAILS-MCP] ERROR: MCP Exception: #{exception.message}"
+        warn "[#{Time.zone.now}] [RAILS-MCP] ERROR: #{exception.backtrace.join("\n")}" if ENV['RAILS_MCP_DEBUG'] == '1'
 
         # Log context for debugging
         return unless context && ENV['RAILS_MCP_DEBUG'] == '1'
 
-        warn "[#{Time.now}] [RAILS-MCP] DEBUG: MCP Context: #{context.inspect}"
+        warn "[#{Time.zone.now}] [RAILS-MCP] DEBUG: MCP Context: #{context.inspect}"
       end
 
       def log_mcp_calls(data)
@@ -162,12 +162,12 @@ module RailsActiveMcp
         log_message += " [#{data[:tool_name]}]" if data[:tool_name]
         log_message += " (#{duration_ms}ms)"
 
-        warn "[#{Time.now}] [RAILS-MCP] DEBUG: #{log_message}"
+        warn "[#{Time.zone.now}] [RAILS-MCP] DEBUG: #{log_message}"
 
         # Log errors separately
         return unless data[:error]
 
-        warn "[#{Time.now}] [RAILS-MCP] ERROR: MCP Call Error: #{data[:error]}"
+        warn "[#{Time.zone.now}] [RAILS-MCP] ERROR: MCP Call Error: #{data[:error]}"
       end
 
       def server_context

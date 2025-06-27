@@ -40,7 +40,7 @@ module RailsActiveMcp
 
         def self.call(model:, server_context:, include_schema: true, include_associations: true,
                       include_validations: true)
-          config = RailsActiveMcp.config
+          RailsActiveMcp.config
 
           begin
             model_class = model.constantize
@@ -92,8 +92,6 @@ module RailsActiveMcp
             error_response("Error analyzing model: #{e.message}")
           end
         end
-
-        private
 
         def self.error_response(message)
           MCP::Tool::Response.new([

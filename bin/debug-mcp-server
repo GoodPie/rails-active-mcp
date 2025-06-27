@@ -34,7 +34,7 @@ class McpDebugger
 
   def parse_options
     OptionParser.new do |opts|
-      opts.banner = "Usage: #{File.basename($0)} [options]"
+      opts.banner = "Usage: #{File.basename($PROGRAM_NAME)} [options]"
 
       opts.on('-m', '--mode MODE', %i[inspector test logs],
               'Debug mode (inspector, test, logs)') do |mode|
@@ -75,7 +75,7 @@ class McpDebugger
 
       cmd = "npx @modelcontextprotocol/inspector #{inspector_command}"
       puts "\n💻 Running: #{cmd}"
-      puts "\n" + '=' * 60
+      puts "\n#{'=' * 60}"
 
       exec(cmd)
 
@@ -167,10 +167,10 @@ class McpDebugger
       This script helps debug and test your Rails Active MCP server.
 
       Usage examples:
-        #{File.basename($0)} --mode inspector    # Launch MCP Inspector
-        #{File.basename($0)} --mode test         # Run basic tests
-        #{File.basename($0)} --mode logs         # Show recent logs
-        #{File.basename($0)} --debug             # Enable debug logging
+        #{File.basename($PROGRAM_NAME)} --mode inspector    # Launch MCP Inspector
+        #{File.basename($PROGRAM_NAME)} --mode test         # Run basic tests
+        #{File.basename($PROGRAM_NAME)} --mode logs         # Show recent logs
+        #{File.basename($PROGRAM_NAME)} --debug             # Enable debug logging
 
       Inspector Mode:
         Opens the MCP Inspector connected to your Rails MCP server.

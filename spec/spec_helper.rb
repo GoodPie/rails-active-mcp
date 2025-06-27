@@ -28,7 +28,7 @@ RSpec.configure do |config|
   Kernel.srand config.seed
 
   # Reset configuration before each test
-  config.before(:each) do
+  config.before do
     RailsActiveMcp.configuration = nil
   end
 end
@@ -50,6 +50,6 @@ module Rails
   end
 
   def self.logger
-    @logger ||= Logger.new('/dev/null')
+    @logger ||= Logger.new(File::NULL)
   end
 end

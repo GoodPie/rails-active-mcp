@@ -42,15 +42,15 @@ module RailsActiveMcp
     end
 
     # Logger accessor - configured by engine or defaults to stderr
-    attr_accessor :logger
-
     def logger
       @logger ||= Logger.new($stderr).tap do |logger|
         logger.level = Logger::INFO
-        logger.formatter = proc do |severity, datetime, progname, msg|
+        logger.formatter = proc do |severity, datetime, _progname, msg|
           "[#{datetime}] #{severity} -- RailsActiveMcp: #{msg}\n"
         end
       end
     end
+
+    attr_writer :logger
   end
 end

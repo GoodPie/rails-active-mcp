@@ -1,0 +1,141 @@
+plugins:
+  - rubocop-rails
+  - rubocop-rspec
+
+AllCops:
+  NewCops: enable
+  SuggestExtensions: false
+  TargetRubyVersion: 3.1
+  Exclude:
+    - 'bin/bundle'
+    - 'bin/setup'
+    - 'vendor/**/*'
+    - 'tmp/**/*'
+    - 'db/schema.rb'
+    - 'log/**/*'
+
+# Documentation is not always necessary for utility classes and tools
+Style/Documentation:
+  Enabled: false
+
+# Allow longer classes for main functionality classes
+Metrics/ClassLength:
+  Max: 400
+  Exclude:
+    - 'bin/*'
+
+# Allow longer methods for setup/configuration methods
+Metrics/MethodLength:
+  Max: 50
+  Exclude:
+    - 'bin/*'
+    - 'lib/generators/**/*'
+
+# Allow higher complexity for main execution methods
+Metrics/AbcSize:
+  Max: 55
+  Exclude:
+    - 'bin/*'
+
+Metrics/CyclomaticComplexity:
+  Max: 15
+
+Metrics/PerceivedComplexity:
+  Max: 15
+
+# Allow longer blocks in specs and configuration
+Metrics/BlockLength:
+  Max: 50
+  Exclude:
+    - 'spec/**/*'
+    - 'lib/rails_active_mcp/tasks.rake'
+    - 'lib/generators/**/*'
+
+# Allow longer lines for error messages and documentation
+Layout/LineLength:
+  Max: 150
+  Exclude:
+    - 'bin/*'
+    - 'exe/*'
+
+# Disable some style checks that are too strict for utility scripts
+Lint/UnusedMethodArgument:
+  Enabled: false
+
+# Allow safe navigation preference but don't enforce it everywhere
+Style/SafeNavigation:
+  Enabled: true
+
+# Allow both single and double quotes
+Style/StringLiterals:
+  EnforcedStyle: single_quotes
+
+# Don't enforce frozen string literals in every file
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+# Allow numeric comparisons with zero
+Style/NumericPredicate:
+  Enabled: false
+
+# Rails specific configurations
+Rails:
+  Enabled: true
+
+# RSpec specific configurations
+RSpec:
+  Enabled: true
+
+# Gemspec specific configurations
+Gemspec/DevelopmentDependencies:
+  Enabled: false
+
+# Allow some duplication in methods that handle similar cases
+Lint/DuplicateMethods:
+  Enabled: false
+
+Lint/DuplicateBranch:
+  Enabled: false
+
+# RSpec specific overrides for test quality
+RSpec/MultipleExpectations:
+  Max: 5
+
+RSpec/ExampleLength:
+  Max: 15
+
+RSpec/DescribeClass:
+  Enabled: false
+
+RSpec/InstanceVariable:
+  Enabled: false
+
+RSpec/BeforeAfterAll:
+  Enabled: false
+
+RSpec/VerifiedDoubles:
+  Enabled: false
+
+RSpec/MessageSpies:
+  Enabled: false
+
+RSpec/MessageChain:
+  Enabled: false
+
+RSpec/ReceiveMessages:
+  Enabled: false
+
+RSpec/ScatteredSetup:
+  Enabled: false
+
+RSpec/SpecFilePathFormat:
+  Enabled: false
+
+# Allow Time.zone vs Time.now flexibility
+Rails/TimeZone:
+  Enabled: false
+
+# Naming conventions - allow short parameter names in specs/tools
+Naming/MethodParameterName:
+  Exclude:
+    - 'spec/**/*' 

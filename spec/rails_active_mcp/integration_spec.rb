@@ -8,15 +8,15 @@ RSpec.describe 'RailsActiveMcp Integration' do
         42
       end
 
-      def self.where(conditions)
+      def self.where(_conditions)
         self
       end
 
-      def self.limit(n)
+      def self.limit(_n)
         []
       end
 
-      def self.find(id)
+      def self.find(_id)
         new
       end
 
@@ -142,9 +142,9 @@ RSpec.describe 'RailsActiveMcp Integration' do
 
   describe 'Performance Characteristics' do
     it 'executes queries within reasonable time limits' do
-      start_time = Time.now
+      start_time = Time.zone.now
       result = executor.execute('User.count')
-      execution_time = Time.now - start_time
+      execution_time = Time.zone.now - start_time
 
       expect(result[:success]).to be true
       expect(execution_time).to be < 1.0 # Should complete within 1 second

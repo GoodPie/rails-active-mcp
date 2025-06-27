@@ -54,7 +54,6 @@ module RailsActiveMcp
     end
 
     def safe?(code)
-
       analysis = analyze(code)
       analysis[:safe]
     end
@@ -136,10 +135,8 @@ module RailsActiveMcp
         read_only ? 'Code appears safe and read-only' : 'Code appears safe'
       else
         severity_counts = violations.group_by { |v| v[:severity] }.transform_values(&:count)
-        parts = []
-
-        severity_counts.each do |severity, count|
-          parts << "#{count} #{severity} violation#{'s' if count > 1}"
+        parts = severity_counts.map do |severity, count|
+          "#{count} #{severity} violation#{'s' if count > 1}"
         end
 
         "Found #{parts.join(', ')}"

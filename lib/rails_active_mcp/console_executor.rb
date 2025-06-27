@@ -68,7 +68,7 @@ module RailsActiveMcp
           args: args,
           result: serialize_result(result),
           count: calculate_count(result),
-          executed_at: Time.now
+          executed_at: Time.zone.now
         }
       rescue StandardError => e
         log_error(e, { model: model, method: method, args: args })
@@ -207,9 +207,9 @@ module RailsActiveMcp
           binding_context = create_thread_safe_console_binding
 
           # Execute code
-          start_time = Time.now
+          start_time = Time.zone.now
           return_value = binding_context.eval(code)
-          execution_time = Time.now - start_time
+          execution_time = Time.zone.now - start_time
 
           output = captured_output.string
           errors = captured_errors.string
@@ -226,7 +226,7 @@ module RailsActiveMcp
             code: code
           }
         rescue StandardError => e
-          execution_time = Time.now - start_time if defined?(start_time)
+          execution_time = Time.zone.now - start_time if defined?(start_time)
           errors = captured_errors.string
 
           {
@@ -248,10 +248,10 @@ module RailsActiveMcp
     def execute_direct(code)
       # Create thread-safe binding context
       binding_context = create_thread_safe_console_binding
-      start_time = Time.now
+      start_time = Time.zone.now
 
       result = binding_context.eval(code)
-      execution_time = Time.now - start_time
+      execution_time = Time.zone.now - start_time
 
       {
         success: true,
@@ -260,7 +260,7 @@ module RailsActiveMcp
         code: code
       }
     rescue StandardError => e
-      execution_time = Time.now - start_time if defined?(start_time)
+      execution_time = Time.zone.now - start_time if defined?(start_time)
 
       {
         success: false,
@@ -430,9 +430,7 @@ module RailsActiveMcp
         end
       end
 
-      unless safety_analysis[:read_only]
-        recommendations << 'Consider using the safe_query tool for read-only operations'
-      end
+      recommendations << 'Consider using the safe_query tool for read-only operations' unless safety_analysis[:read_only]
 
       recommendations
     end

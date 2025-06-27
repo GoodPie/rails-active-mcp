@@ -1,6 +1,6 @@
 namespace :rails_active_mcp do
   desc 'Check the safety of Ruby code'
-  task :check_safety, [:code] => :environment do |task, args|
+  task :check_safety, [:code] => :environment do |_task, args|
     code = args[:code]
 
     if code.blank?
@@ -25,7 +25,7 @@ namespace :rails_active_mcp do
   end
 
   desc 'Execute Ruby code with safety checks'
-  task :execute, [:code] => :environment do |task, args|
+  task :execute, [:code] => :environment do |_task, args|
     code = args[:code]
 
     if code.blank?
@@ -64,7 +64,7 @@ namespace :rails_active_mcp do
     safe_result = RailsActiveMcp.safe?('User.count')
     dangerous_result = RailsActiveMcp.safe?('User.delete_all')
     puts "  Safe code detection: #{safe_result ? 'PASS' : 'FAIL'}"
-    puts "  Dangerous code detection: #{!dangerous_result ? 'PASS' : 'FAIL'}"
+    puts "  Dangerous code detection: #{dangerous_result ? 'FAIL' : 'PASS'}"
 
     # Test Rails integration
     puts "\n3. Testing Rails integration:"
@@ -139,7 +139,7 @@ namespace :rails_active_mcp do
 
   desc 'Generate example usage documentation'
   task generate_examples: :environment do
-    examples_file = Rails.root.join('doc', 'rails_active_mcp_examples.md')
+    examples_file = Rails.root.join('doc/rails_active_mcp_examples.md')
     FileUtils.mkdir_p(File.dirname(examples_file))
 
     content = <<~MARKDOWN
@@ -238,7 +238,7 @@ namespace :rails_active_mcp do
     config_template = {
       mcpServers: {
         'rails-active-mcp' => {
-          command: Rails.root.join('bin', 'rails-active-mcp-wrapper').to_s,
+          command: Rails.root.join('bin/rails-active-mcp-wrapper').to_s,
           cwd: Rails.root.to_s,
           env: {
             RAILS_ENV: Rails.env
@@ -287,7 +287,7 @@ namespace :rails_active_mcp do
       full_path = Rails.root.join(file)
       if File.exist?(full_path)
         executable = File.executable?(full_path)
-        puts "  #{file}: ✅ #{executable ? '(executable)' : ''}"
+        puts "  #{file}: ✅ #{'(executable)' if executable}"
       else
         puts "  #{file}: ❌ Missing"
       end

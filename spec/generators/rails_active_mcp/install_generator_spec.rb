@@ -26,23 +26,19 @@ RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
 
     # Create basic files that the generator expects
     File.write(File.join(@destination, 'config', 'routes.rb'), "Rails.application.routes.draw do\nend\n")
-  end
-
-  after(:all) do
-    # Clean up
-    FileUtils.rm_rf(@destination) if File.exist?(@destination)
-  end
-
-  destination @destination
-
-  before do
-    # Clear destination before each test
     FileUtils.rm_rf(Dir.glob(File.join(@destination, '*')))
     FileUtils.mkdir_p(File.join(@destination, 'config'))
     FileUtils.mkdir_p(File.join(@destination, 'config', 'initializers'))
     FileUtils.mkdir_p(File.join(@destination, 'bin'))
     File.write(File.join(@destination, 'config', 'routes.rb'), "Rails.application.routes.draw do\nend\n")
   end
+
+  after(:all) do
+    # Clean up
+    FileUtils.rm_rf(@destination)
+  end
+
+  destination @destination
 
   describe 'generator execution' do
     before do

@@ -70,8 +70,6 @@ module RailsActiveMcp
           end
         end
 
-        private
-
         def self.format_success_result(result)
           output = []
           output << "Code: #{result[:code]}"

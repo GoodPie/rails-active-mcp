@@ -53,7 +53,7 @@ module RailsActiveMcp
           # Ensures correct Ruby environment for Claude Desktop execution
 
           # Fix Claude Desktop environment isolation issues
-          export HOME="${HOME:-#{ENV['HOME']}}"
+          export HOME="${HOME:-#{Dir.home}}"
           export USER="${USER:-$(whoami)}"
 
           # Strategy 1: Use absolute Ruby path (most reliable)
@@ -99,7 +99,7 @@ module RailsActiveMcp
       def show_post_install_instructions
         return unless behavior == :invoke
 
-        say "\n" + '=' * 50, :green
+        say "\n#{'=' * 50}", :green
         say 'Rails Active MCP Installation Complete!', :green
         say '=' * 50, :green
         say "\nFor Claude Desktop configuration:", :green
@@ -108,11 +108,11 @@ module RailsActiveMcp
         say '{', :cyan
         say '  "mcpServers": {', :cyan
         say '    "rails-active-mcp": {', :cyan
-        say "      \"command\": \"#{Rails.root}/bin/rails-active-mcp-wrapper\",", :cyan
+        say "      \"command\": \"#{Rails.root.join('bin/rails-active-mcp-wrapper",')}", :cyan
         say "      \"cwd\": \"#{Rails.root}\",", :cyan
         say '      "env": {', :cyan
         say '        "RAILS_ENV": "development",', :cyan
-        say "        \"HOME\": \"#{ENV['HOME']}\"", :cyan
+        say "        \"HOME\": \"#{Dir.home}\"", :cyan
         say '      }', :cyan
         say '    }', :cyan
         say '  }', :cyan
@@ -148,7 +148,7 @@ module RailsActiveMcp
       def readme(path)
         readme_path = File.join(self.class.source_root, path)
         if File.exist?(readme_path)
-          say IO.read(readme_path), :green
+          say File.read(readme_path), :green
         else
           say "README file not found at #{readme_path}", :green
         end

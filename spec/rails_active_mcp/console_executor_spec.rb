@@ -121,13 +121,13 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
 
     context 'with timeout' do
       it 'respects custom timeout' do
-        start_time = Time.now
+        start_time = Time.zone.now
 
         expect do
           executor.execute('sleep 10', timeout: 1)
         end.to raise_error(RailsActiveMcp::TimeoutError)
 
-        execution_time = Time.now - start_time
+        execution_time = Time.zone.now - start_time
         expect(execution_time).to be < 2 # Should timeout much faster than 10 seconds
       end
     end
@@ -207,8 +207,9 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
       before do
         # Mock Rails for testing
         stub_const('Rails', double('Rails'))
-        allow(Rails).to receive(:application).and_return(double('Application'))
-        allow(Rails).to receive(:env).and_return(double('Environment', development?: false))
+        allow(Rails).to receive_messages(application: double('Application'),
+                                         env: double('Environment',
+                                                     development?: false))
       end
 
       it 'uses Rails executor when available' do
@@ -292,8 +293,8 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
   describe 'development mode reloading' do
     before do
       stub_const('Rails', double('Rails'))
-      allow(Rails).to receive(:env).and_return(double('Environment', development?: true))
-      allow(Rails).to receive(:application).and_return(double('Application'))
+      allow(Rails).to receive_messages(env: double('Environment', development?: true),
+                                       application: double('Application'))
     end
 
     it 'handles reloading when available' do

@@ -72,7 +72,7 @@ RSpec.describe 'Logger Integration' do
 
     it 'uses RailsActiveMcp.logger consistently across components' do
       # Test that the logger is used in console executor
-      executor = RailsActiveMcp::ConsoleExecutor.new(RailsActiveMcp.config)
+      RailsActiveMcp::ConsoleExecutor.new(RailsActiveMcp.config)
 
       # This should not raise an error
       expect { RailsActiveMcp.logger.info('Test message') }.not_to raise_error
@@ -87,7 +87,7 @@ RSpec.describe 'Logger Integration' do
 
       # This should not cause the application to crash
       expect do
-        executor = RailsActiveMcp::ConsoleExecutor.new(RailsActiveMcp.config)
+        RailsActiveMcp::ConsoleExecutor.new(RailsActiveMcp.config)
         # The log_execution method should handle logger failures gracefully
       end.not_to raise_error
     end

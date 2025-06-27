@@ -1,243 +1,439 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Enhanced test script to diagnose MCP server output redirection and identify sources of interference
-puts '🔍 Enhanced Rails Active MCP Server Output Diagnostics'
-puts '=' * 80
+# Enhanced MCP Output Testing Script
+# Tests Rails Active MCP server output and protocol compliance
 
-# Test 1: Check working directory and Gemfile location
-puts "\n📁 Step 1: Checking working directory and Gemfile location..."
-puts "Current working directory: #{Dir.pwd}"
-
-# Check for Gemfile in current directory
-if File.exist?('Gemfile')
-  puts '✅ Gemfile found in current directory'
-
-  # Show Gemfile info
-  gemfile_size = File.size('Gemfile')
-  puts "   Gemfile size: #{gemfile_size} bytes"
-
-  # Check for Gemfile.lock
-  if File.exist?('Gemfile.lock')
-    puts '✅ Gemfile.lock found'
-  else
-    puts "⚠️  Gemfile.lock not found - run 'bundle install' if needed"
-  end
-else
-  puts '❌ Gemfile NOT found in current directory'
-  puts "💡 This is likely the cause of 'Could not locate Gemfile' error"
-
-  # Look for Gemfile in nearby directories
-  puts "\n🔍 Searching for Gemfile in nearby directories..."
-
-  # Check parent directories
-  current_dir = Dir.pwd
-  5.times do
-    parent_dir = File.dirname(current_dir)
-    break if parent_dir == current_dir # reached root
-
-    gemfile_path = File.join(parent_dir, 'Gemfile')
-    if File.exist?(gemfile_path)
-      puts "✅ Found Gemfile in parent directory: #{parent_dir}"
-      puts "💡 You may need to run the server from: #{parent_dir}"
-      break
-    end
-    current_dir = parent_dir
-  end
-
-  # Check subdirectories
-  Dir.glob('*/Gemfile').each do |gemfile_path|
-    dir = File.dirname(gemfile_path)
-    puts "✅ Found Gemfile in subdirectory: #{File.join(Dir.pwd, dir)}"
-    puts "💡 You may need to run the server from: #{File.join(Dir.pwd, dir)}"
-  end
-end
-
-# Check current directory contents
-puts "\n📋 Current directory contents:"
-Dir.entries('.').reject { |entry| entry.start_with?('.') }.sort.each do |entry|
-  if File.directory?(entry)
-    puts "   📁 #{entry}/"
-  else
-    puts "   📄 #{entry}"
-  end
-end
-
-# Test 2: Check for log redirection
-log_dir = File.join(Dir.pwd, 'log')
-stderr_log = File.join(log_dir, 'rails_mcp_stderr.log')
-
-puts "\n📁 Step 2: Checking log file setup..."
-if File.exist?(stderr_log)
-  puts "✅ stderr log file exists: #{stderr_log}"
-
-  # Show recent log entries
-  if File.size(stderr_log) > 0
-    puts "\n📋 Recent log entries (last 20 lines):"
-    puts '-' * 60
-    puts File.readlines(stderr_log).last(20).join
-    puts '-' * 60
-  else
-    puts '📋 Log file is empty (good - no errors during startup)'
-  end
-else
-  puts "❌ stderr log file does not exist: #{stderr_log}"
-  puts '💡 This may indicate output redirection is not working'
-end
-
-# Test 3: Check Rails environment loading
-puts "\n📁 Step 3: Testing Rails environment loading..."
-if File.exist?('config/environment.rb')
-  puts '✅ Rails application detected'
-
-  # Test Rails loading with output capture
-  require 'stringio'
-  captured_stdout = StringIO.new
-  captured_stderr = StringIO.new
-
-  original_stdout = $stdout
-  original_stderr = $stderr
-
-  begin
-    $stdout = captured_stdout
-    $stderr = captured_stderr
-
-    require './config/environment'
-
-    puts '✅ Rails environment loaded successfully'
-  rescue StandardError => e
-    puts "⚠️  Rails loading error: #{e.class.name}: #{e.message}"
-    puts "   This could be the source of 'Could not' messages"
-  ensure
-    $stdout = original_stdout
-    $stderr = original_stderr
-  end
-
-  # Check what was captured
-  stdout_content = captured_stdout.string
-  stderr_content = captured_stderr.string
-
-  unless stdout_content.empty?
-    puts "\n⚠️  STDOUT content during Rails loading:"
-    puts "   #{stdout_content.inspect}"
-    puts '   ↑ This content could interfere with MCP JSON protocol'
-  end
-
-  unless stderr_content.empty?
-    puts "\n📝 STDERR content during Rails loading:"
-    puts "   #{stderr_content.lines.first(5).join('   ')}"
-    puts '   ... (truncated)' if stderr_content.lines.length > 5
-  end
-
-else
-  puts '❌ No Rails application found (config/environment.rb missing)'
-end
-
-# Test 4: Database connectivity check
-puts "\n📁 Step 4: Testing database connectivity..."
-begin
-  if defined?(Rails) && Rails.respond_to?(:application)
-    ActiveRecord::Base.connection.execute('SELECT 1')
-    puts '✅ Database connection successful'
-  else
-    puts '⚠️  Rails not loaded, skipping database test'
-  end
-rescue StandardError => e
-  puts "⚠️  Database connection error: #{e.class.name}: #{e.message}"
-  puts "   Error details: #{e.message}"
-  if e.message.include?('Could not')
-    puts "   🎯 FOUND POTENTIAL SOURCE: This error contains 'Could not'"
-    puts '   💡 This database error may be leaking to stdout during server startup'
-  end
-end
-
-# Test 5: Test JSON output without interference
-puts "\n📁 Step 5: Testing clean JSON output..."
 require 'json'
-test_json = {
-  test: 'Rails Active MCP JSON Test',
-  timestamp: Time.now.to_f,
-  rails_env: defined?(Rails) ? Rails.env : 'not_loaded',
-  database_connected: begin
-    if defined?(ActiveRecord)
-      ActiveRecord::Base.connection.execute('SELECT 1')
-      true
-    else
-      false
-    end
-  rescue StandardError
-    false
+require 'timeout'
+require 'open3'
+require 'colorize'
+
+class McpOutputTester
+  def initialize
+    @test_results = []
+    @server_process = nil
   end
-}
 
-puts '🧪 Test JSON (should be valid):'
-puts test_json.to_json
-puts '✅ JSON output test completed'
+  def run_all_tests
+    puts '🧪 Rails Active MCP Output Tester'.colorize(:blue)
+    puts '=' * 50
 
-# Test 6: MCP Server startup simulation
-puts "\n📁 Step 6: Simulating MCP server startup..."
-begin
-  require_relative '../lib/rails_active_mcp'
-  puts '✅ rails_active_mcp gem loaded successfully'
-  puts "   Version: #{RailsActiveMcp::VERSION}"
-rescue StandardError => e
-  puts "❌ Failed to load rails_active_mcp gem: #{e.message}"
-end
+    check_prerequisites
+    test_server_startup
+    test_protocol_compliance
+    test_tool_functionality
+    test_error_handling
+    test_performance
 
-# Test 7: Check for common "Could not" sources
-puts "\n📁 Step 7: Checking for common 'Could not' error sources..."
-
-common_sources = [
-  'Database connection failure',
-  'Missing database configuration',
-  'Missing secret key base',
-  'Asset compilation issues',
-  'Missing environment variables',
-  'File permission issues'
-]
-
-# Test database config
-begin
-  if defined?(Rails)
-    db_config = Rails.application.config.database_configuration
-    current_env = Rails.env || 'development'
-
-    if db_config[current_env].nil?
-      puts "⚠️  Missing database configuration for #{current_env} environment"
-      puts "   This could cause 'Could not find database' errors"
-    else
-      puts "✅ Database configuration found for #{current_env}"
-    end
+    print_summary
   end
-rescue StandardError => e
-  puts "⚠️  Error checking database config: #{e.message}"
-end
 
-# Test secret key base
-begin
-  if defined?(Rails) && Rails.application.respond_to?(:secret_key_base)
-    if Rails.application.secret_key_base.nil? || Rails.application.secret_key_base.empty?
-      puts '⚠️  Missing or empty secret_key_base'
-      puts "   This could cause 'Could not generate' errors"
+  private
+
+  def check_prerequisites
+    puts "\n📋 Checking Prerequisites...".colorize(:yellow)
+
+    # Check if in Rails project
+    unless File.exist?('config/environment.rb')
+      fail_test('Not in a Rails project directory')
+      return
+    end
+    pass_test('Rails project detected')
+
+    # Check if Rails Active MCP is installed
+    unless File.exist?('bin/rails-active-mcp-server')
+      fail_test('rails-active-mcp-server not found')
+      return
+    end
+    pass_test('MCP server executable found')
+
+    # Check if wrapper exists
+    if File.exist?('bin/rails-active-mcp-wrapper')
+      pass_test('MCP wrapper script found')
     else
-      puts '✅ Secret key base is configured'
+      warn_test('MCP wrapper script not found (optional)')
+    end
+
+    # Check Rails environment
+    begin
+      require_relative '../config/environment'
+      pass_test('Rails environment loads successfully')
+    rescue StandardError => e
+      fail_test("Rails environment failed to load: #{e.message}")
     end
   end
-rescue StandardError => e
-  puts "⚠️  Error checking secret key base: #{e.message}"
+
+  def test_server_startup
+    puts "\n🚀 Testing Server Startup...".colorize(:yellow)
+
+    begin
+      # Test server starts without crashing
+      stdin, stdout, stderr, wait_thr = Open3.popen3('./bin/rails-active-mcp-server', 'stdio')
+
+      # Give server time to start
+      sleep(2)
+
+      if wait_thr.alive?
+        pass_test('Server starts successfully')
+
+        # Keep reference for later tests
+        @server_stdin = stdin
+        @server_stdout = stdout
+        @server_stderr = stderr
+        @server_process = wait_thr
+      else
+        stderr_output = stderr.read
+        fail_test("Server failed to start: #{stderr_output}")
+        nil
+      end
+    rescue StandardError => e
+      fail_test("Server startup error: #{e.message}")
+    end
+  end
+
+  def test_protocol_compliance
+    puts "\n📡 Testing MCP Protocol Compliance...".colorize(:yellow)
+
+    return unless @server_stdin && @server_stdout
+
+    # Test initialize method
+    test_initialize_request
+
+    # Test tools/list method
+    test_tools_list_request
+
+    # Test invalid method
+    test_invalid_method_request
+  end
+
+  def test_initialize_request
+    request = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion: '2025-06-18',
+        capabilities: {},
+        clientInfo: {
+          name: 'test-client',
+          version: '1.0.0'
+        }
+      }
+    }
+
+    response = send_request(request)
+
+    if response && response['result']
+      if response['result']['serverInfo'] && response['result']['capabilities']
+        pass_test('Initialize request successful')
+      else
+        fail_test('Initialize response missing required fields')
+      end
+    else
+      fail_test('Initialize request failed')
+    end
+  end
+
+  def test_tools_list_request
+    request = {
+      jsonrpc: '2.0',
+      id: 2,
+      method: 'tools/list',
+      params: {}
+    }
+
+    response = send_request(request)
+
+    if response && response['result'] && response['result']['tools']
+      tools = response['result']['tools']
+      expected_tools = %w[console_execute model_info safe_query dry_run]
+
+      found_tools = tools.pluck('name')
+      missing_tools = expected_tools - found_tools
+
+      if missing_tools.empty?
+        pass_test("All expected tools found: #{found_tools.join(', ')}")
+      else
+        warn_test("Missing tools: #{missing_tools.join(', ')}")
+      end
+    else
+      fail_test('Tools list request failed')
+    end
+  end
+
+  def test_invalid_method_request
+    request = {
+      jsonrpc: '2.0',
+      id: 3,
+      method: 'invalid_method',
+      params: {}
+    }
+
+    response = send_request(request)
+
+    if response && response['error']
+      pass_test('Invalid method properly returns error')
+    else
+      fail_test('Invalid method should return error')
+    end
+  end
+
+  def test_tool_functionality
+    puts "\n🔧 Testing Tool Functionality...".colorize(:yellow)
+
+    return unless @server_stdin && @server_stdout
+
+    # Test console_execute tool
+    test_console_execute_tool
+
+    # Test safe_query tool
+    test_safe_query_tool
+
+    # Test dry_run tool
+    test_dry_run_tool
+  end
+
+  def test_console_execute_tool
+    request = {
+      jsonrpc: '2.0',
+      id: 4,
+      method: 'tools/call',
+      params: {
+        name: 'console_execute',
+        arguments: {
+          code: '1 + 1'
+        }
+      }
+    }
+
+    response = send_request(request)
+
+    if response && response['result']
+      pass_test('console_execute tool works')
+    else
+      fail_test('console_execute tool failed')
+    end
+  end
+
+  def test_safe_query_tool
+    # Skip if no User model
+    return warn_test('Skipping safe_query test (no User model)') unless defined?(User)
+
+    request = {
+      jsonrpc: '2.0',
+      id: 5,
+      method: 'tools/call',
+      params: {
+        name: 'safe_query',
+        arguments: {
+          model: 'User',
+          method: 'count'
+        }
+      }
+    }
+
+    response = send_request(request)
+
+    if response && response['result']
+      pass_test('safe_query tool works')
+    else
+      fail_test('safe_query tool failed')
+    end
+  end
+
+  def test_dry_run_tool
+    request = {
+      jsonrpc: '2.0',
+      id: 6,
+      method: 'tools/call',
+      params: {
+        name: 'dry_run',
+        arguments: {
+          code: 'User.delete_all'
+        }
+      }
+    }
+
+    response = send_request(request)
+
+    if response && response['result']
+      pass_test('dry_run tool works')
+    else
+      fail_test('dry_run tool failed')
+    end
+  end
+
+  def test_error_handling
+    puts "\n🚨 Testing Error Handling...".colorize(:yellow)
+
+    return unless @server_stdin && @server_stdout
+
+    # Test malformed JSON
+    test_malformed_json
+
+    # Test dangerous code execution
+    test_dangerous_code_execution
+  end
+
+  def test_malformed_json
+    malformed_request = '{"jsonrpc":"2.0","id":7,"method":"tools/list"' # Missing closing brace
+
+    begin
+      @server_stdin.puts(malformed_request)
+      @server_stdin.flush
+
+      # Server should handle gracefully
+      warn_test('Malformed JSON test sent')
+    rescue StandardError => e
+      fail_test("Server crashed on malformed JSON: #{e.message}")
+    end
+  end
+
+  def test_dangerous_code_execution
+    request = {
+      jsonrpc: '2.0',
+      id: 8,
+      method: 'tools/call',
+      params: {
+        name: 'console_execute',
+        arguments: {
+          code: "system('echo dangerous')"
+        }
+      }
+    }
+
+    response = send_request(request)
+
+    if response && response['result']&.to_s&.include?('dangerous')
+      fail_test('Dangerous code executed successfully (security issue)')
+    elsif response && response['error']
+      pass_test('Dangerous code properly blocked')
+    else
+      warn_test('Dangerous code test inconclusive')
+    end
+  end
+
+  def test_performance
+    puts "\n⚡ Testing Performance...".colorize(:yellow)
+
+    return unless @server_stdin && @server_stdout
+
+    # Test response time
+    start_time = Time.zone.now
+
+    request = {
+      jsonrpc: '2.0',
+      id: 9,
+      method: 'tools/list',
+      params: {}
+    }
+
+    send_request(request)
+    end_time = Time.zone.now
+
+    response_time = end_time - start_time
+
+    if response_time < 1.0
+      pass_test("Response time good: #{(response_time * 1000).round(2)}ms")
+    elsif response_time < 3.0
+      warn_test("Response time slow: #{(response_time * 1000).round(2)}ms")
+    else
+      fail_test("Response time too slow: #{(response_time * 1000).round(2)}ms")
+    end
+  end
+
+  def send_request(request_hash)
+    return nil unless @server_stdin && @server_stdout
+
+    begin
+      request_json = JSON.generate(request_hash)
+      @server_stdin.puts(request_json)
+      @server_stdin.flush
+
+      # Wait for response with timeout
+      Timeout.timeout(5) do
+        response_line = @server_stdout.readline
+        JSON.parse(response_line)
+      end
+    rescue Timeout::Error
+      fail_test('Request timed out')
+      nil
+    rescue StandardError => e
+      fail_test("Request failed: #{e.message}")
+      nil
+    end
+  end
+
+  def pass_test(message)
+    @test_results << { status: :pass, message: message }
+    puts "  ✅ #{message}".colorize(:green)
+  end
+
+  def fail_test(message)
+    @test_results << { status: :fail, message: message }
+    puts "  ❌ #{message}".colorize(:red)
+  end
+
+  def warn_test(message)
+    @test_results << { status: :warn, message: message }
+    puts "  ⚠️  #{message}".colorize(:yellow)
+  end
+
+  def print_summary
+    puts "\n📊 Test Summary".colorize(:blue)
+    puts '=' * 50
+
+    passed = @test_results.count { |r| r[:status] == :pass }
+    failed = @test_results.count { |r| r[:status] == :fail }
+    warned = @test_results.count { |r| r[:status] == :warn }
+    total = @test_results.count
+
+    puts "Total tests: #{total}"
+    puts "Passed: #{passed}".colorize(:green)
+    puts "Failed: #{failed}".colorize(failed > 0 ? :red : :green)
+    puts "Warnings: #{warned}".colorize(warned > 0 ? :yellow : :green)
+
+    if failed > 0
+      puts "\n❌ Some tests failed. Check the output above for details.".colorize(:red)
+      puts 'Consider running: rails rails_active_mcp:status'.colorize(:yellow)
+    elsif warned > 0
+      puts "\n⚠️  Tests passed with warnings.".colorize(:yellow)
+    else
+      puts "\n✅ All tests passed!".colorize(:green)
+      puts 'Your Rails Active MCP setup is working correctly.'.colorize(:green)
+    end
+
+    cleanup_server
+  end
+
+  def cleanup_server
+    return unless @server_process&.alive?
+
+    begin
+      @server_stdin&.close
+      @server_stdout&.close
+      @server_stderr&.close
+      Process.kill('TERM', @server_process.pid)
+      @server_process.join(5) # Wait up to 5 seconds
+    rescue StandardError => e
+      puts "Warning: Could not cleanly shutdown server: #{e.message}".colorize(:yellow)
+    end
+  end
 end
 
-puts "\n🏁 Diagnostic Summary:"
-puts '=' * 80
-puts '1. Check if Gemfile exists in current directory (most common cause)'
-puts '2. Check the log file above for any error messages'
-puts "3. Look for any 'Could not' messages in the Rails loading output"
-puts "4. Database connectivity issues are a common source of 'Could not' errors"
-puts '5. Run with RAILS_MCP_DEBUG=1 to see more detailed output'
-puts ''
-puts '🚀 Next steps:'
-puts '   • If Gemfile not found: cd to correct Rails app directory'
-puts '   • If database errors found: Check config/database.yml'
-puts '   • If Rails loading errors: Check config/application.rb and initializers'
-puts "   • If 'Could not' found: Address the specific error before running MCP server"
-puts '   • Test again: ./exe/rails-active-mcp-server stdio'
+# Add colorize gem check
+begin
+  require 'colorize'
+rescue LoadError
+  # Fallback: define colorize as no-op if gem not available
+  class String
+    def colorize(_color)
+      self
+    end
+  end
+end
+
+# Run the tests
+tester = McpOutputTester.new
+tester.run_all_tests
