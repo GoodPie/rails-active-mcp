@@ -40,9 +40,7 @@ module RailsActiveMcp
 
         def self.call(model:, server_context:, include_schema: true, include_associations: true,
                       include_validations: true)
-          config = server_context[:config]
-
-          return error_response('Rails Active MCP is disabled') unless config.enabled
+          config = RailsActiveMcp.config
 
           begin
             model_class = model.constantize

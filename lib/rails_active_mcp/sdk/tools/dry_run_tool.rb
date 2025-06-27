@@ -26,10 +26,10 @@ module RailsActiveMcp
           open_world_hint: false
         )
 
-        def self.call(code:, server_context:)
-          config = server_context[:config]
+        def self.call(code:, server_context:, check_safety: true, analyze_dependencies: true)
+          config = RailsActiveMcp.config
 
-          return error_response('Rails Active MCP is disabled') unless config.enabled
+          # Create safety checker
 
           executor = RailsActiveMcp::ConsoleExecutor.new(config)
           analysis = executor.dry_run(code)

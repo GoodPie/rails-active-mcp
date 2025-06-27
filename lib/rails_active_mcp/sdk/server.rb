@@ -2,6 +2,12 @@
 
 require 'mcp'
 
+# Require all SDK tools
+require_relative 'tools/console_execute_tool'
+require_relative 'tools/model_info_tool'
+require_relative 'tools/safe_query_tool'
+require_relative 'tools/dry_run_tool'
+
 module RailsActiveMcp
   module Sdk
     class Server

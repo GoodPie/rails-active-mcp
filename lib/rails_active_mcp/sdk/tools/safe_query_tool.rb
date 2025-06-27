@@ -38,10 +38,8 @@ module RailsActiveMcp
           open_world_hint: false
         )
 
-        def self.call(model:, method:, server_context:, args: [], limit: nil)
-          config = server_context[:config]
-
-          return error_response('Rails Active MCP is disabled') unless config.enabled
+        def self.call(model:, method:, server_context:, args: [], limit: 100)
+          config = RailsActiveMcp.config
 
           executor = RailsActiveMcp::ConsoleExecutor.new(config)
 
@@ -55,7 +53,7 @@ module RailsActiveMcp
           if result[:success]
             output = []
             output << "Query: #{model}.#{method}(#{args.join(', ')})"
-            output << "Count: #{result[:count]}"
+            output << "Count: #{result[:count]}" if result[:count]
             output << "Result: #{result[:result].inspect}"
 
             MCP::Tool::Response.new([

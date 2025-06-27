@@ -6,6 +6,9 @@ require_relative 'rails_active_mcp/configuration'
 require_relative 'rails_active_mcp/safety_checker'
 require_relative 'rails_active_mcp/console_executor'
 
+# Load SDK server
+require_relative 'rails_active_mcp/sdk/server'
+
 # Load Engine for Rails integration
 require_relative 'rails_active_mcp/engine' if defined?(Rails)
 

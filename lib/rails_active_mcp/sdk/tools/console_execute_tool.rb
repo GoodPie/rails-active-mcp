@@ -38,11 +38,8 @@ module RailsActiveMcp
           open_world_hint: false
         )
 
-        def self.call(code:, safe_mode: true, timeout: 30, capture_output: true)
+        def self.call(code:, server_context:, safe_mode: true, timeout: 30, capture_output: true)
           config = RailsActiveMcp.config
-
-          # Check if Rails Active MCP is enabled
-          return error_response('Rails Active MCP is disabled') unless config.enabled
 
           # Create executor with config
           executor = RailsActiveMcp::ConsoleExecutor.new(config)

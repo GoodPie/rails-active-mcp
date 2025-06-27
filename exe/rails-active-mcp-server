@@ -1,11 +1,12 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'rack'
+# Require essential gems first
 require 'json'
 require 'stringio'
 
-# Suppress ALL output immediately when running stdio mode to prevent MCP JSON protocol interference
+# CRITICAL: Redirect stdout IMMEDIATELY for stdio mode to prevent any output interference
+# This must happen before any other gem loading
 original_stdout = $stdout
 original_stderr = $stderr
 
@@ -17,13 +18,15 @@ if should_redirect
   log_dir = File.join(Dir.pwd, 'log')
   Dir.mkdir(log_dir) unless Dir.exist?(log_dir)
 
-  # Redirect stderr to log file immediately, before Rails loading
+  # Redirect stderr to log file immediately, before any loading
   stderr_log = File.join(log_dir, 'rails_mcp_stderr.log')
   $stderr.reopen(stderr_log, 'a')
   $stderr.sync = true
 
-  # Redirect stdout to null to prevent any Rails output from interfering
-  $stdout = StringIO.new
+  # Use StringIO to capture any unwanted stdout during loading
+  # We'll filter out non-JSON content later
+  captured_stdout = StringIO.new
+  $stdout = captured_stdout
 end
 
 # Initialize Rails environment if available (from current working directory)
@@ -41,75 +44,56 @@ if File.exist?('config/environment.rb')
 end
 
 # Restore stdout after Rails loading for stdio mode (stderr stays redirected)
-$stdout = original_stdout if should_redirect
+if should_redirect
+  # Check if anything was captured during loading
+  captured_content = captured_stdout.string
+  unless captured_content.empty?
+    # Log any captured content to stderr for debugging
+    warn "[#{Time.now}] [RAILS-MCP] WARNING: Captured stdout during loading: #{captured_content.inspect}"
+    $stderr.flush
+  end
+
+  # Restore original stdout
+  $stdout = original_stdout
+end
 
 # Now load the gem
 require_relative '../lib/rails_active_mcp'
 
-# Parse command line options with config defaults (only after Rails is loaded)
-default_mode = if rails_loaded && defined?(RailsActiveMcp) && RailsActiveMcp.respond_to?(:config)
-                 RailsActiveMcp.config.server_mode.to_s
-               else
-                 'stdio'
-               end
-default_port = if rails_loaded && defined?(RailsActiveMcp) && RailsActiveMcp.respond_to?(:config)
-                 RailsActiveMcp.config.server_port
-               else
-                 3001
-               end
-default_host = if rails_loaded && defined?(RailsActiveMcp) && RailsActiveMcp.respond_to?(:config)
-                 RailsActiveMcp.config.server_host
-               else
-                 'localhost'
-               end
-
-transport = ARGV[0] || default_mode
-port = ARGV.include?('--port') ? ARGV[ARGV.index('--port') + 1].to_i : default_port
-host = ARGV.include?('--host') ? ARGV[ARGV.index('--host') + 1] : default_host
+# Parse command line options
+transport = ARGV[0] || 'stdio'
+port = ARGV.include?('--port') ? ARGV[ARGV.index('--port') + 1].to_i : 3001
+host = ARGV.include?('--host') ? ARGV[ARGV.index('--host') + 1] : 'localhost'
 
 case transport
 when 'stdio'
-  # Stdio transport for Claude Desktop
-  require_relative '../lib/rails_active_mcp/stdio_server'
+  # Stdio transport for Claude Desktop using MCP SDK
+  require_relative '../lib/rails_active_mcp/sdk/server'
 
   begin
-    stdio_server = RailsActiveMcp::StdioServer.new
-    stdio_server.start
+    server = RailsActiveMcp::Sdk::Server.new
+    server.run_stdio
   rescue Interrupt
     exit(0)
   end
 
 when 'http'
-  # HTTP transport for other integrations
-  puts 'Warning: Rails environment not loaded. Some features may not work properly.' unless rails_loaded
-
-  puts "Starting Rails Active MCP Server on #{host}:#{port}"
-  puts 'Press Ctrl+C to stop'
-
-  begin
-    require 'webrick'
-    require 'rack/handler/webrick'
-
-    Rack::Handler::WEBrick.run(
-      RailsActiveMcp::McpServer.new,
-      Port: port,
-      Host: host,
-      Logger: WEBrick::Log.new(nil, WEBrick::BasicLog::WARN)
-    )
-  rescue LoadError => e
-    puts 'Error: WEBrick not available. Please install: gem install webrick'
-    puts 'Or use stdio mode for Claude Desktop: rails-active-mcp-server stdio'
-    exit(1)
-  rescue Interrupt
-    puts "\nShutting down server..."
-  end
+  puts 'Error: HTTP transport is no longer supported in v2.0.0'
+  puts 'Please use stdio mode for MCP integration: rails-active-mcp-server stdio'
+  puts ''
+  puts 'For more information, see the migration guide in the documentation.'
+  exit(1)
 
 else
-  puts 'Usage: rails-active-mcp-server [stdio|http] [--port PORT] [--host HOST]'
-  puts '  stdio: For Claude Desktop integration'
-  puts '  http:  For HTTP-based integrations'
+  puts 'Usage: rails-active-mcp-server [stdio] [options]'
+  puts '  stdio: For MCP integration (default)'
+  puts ''
+  puts 'Options:'
+  puts '  --help     Show this help message'
   puts ''
   puts 'Environment variables:'
   puts '  RAILS_MCP_DEBUG=1  Enable debug logging'
+  puts ''
+  puts 'Note: HTTP transport was removed in v2.0.0. Use stdio mode for MCP integration.'
   exit(1)
 end
