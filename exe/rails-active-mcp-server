@@ -77,6 +77,54 @@ transport = ARGV[0] || 'stdio'
 port = ARGV.include?('--port') ? ARGV[ARGV.index('--port') + 1].to_i : 3001
 host = ARGV.include?('--host') ? ARGV[ARGV.index('--host') + 1] : 'localhost'
 
+# Determine and set correct working directory
+def find_rails_root(start_dir = Dir.pwd)
+  current_dir = start_dir
+
+  # Look for Gemfile and config/environment.rb up to 5 levels up
+  5.times do
+    gemfile_path = File.join(current_dir, 'Gemfile')
+    config_path = File.join(current_dir, 'config', 'environment.rb')
+
+    return current_dir if File.exist?(gemfile_path) && File.exist?(config_path)
+
+    parent_dir = File.dirname(current_dir)
+    break if parent_dir == current_dir # reached root
+
+    current_dir = parent_dir
+  end
+
+  nil
+end
+
+# Auto-detect Rails root and change directory if needed
+rails_root = find_rails_root
+if rails_root && rails_root != Dir.pwd
+  warn "[#{Time.now}] [RAILS-MCP] INFO: Detected Rails root at #{rails_root}, changing directory" if should_redirect
+  Dir.chdir(rails_root)
+elsif rails_root.nil?
+  # Check if we're in the gem directory and need to find a Rails app
+  if File.basename(Dir.pwd) == 'rails-active-mcp-gem' || Dir.pwd.include?('rails-active-mcp-gem')
+    warn "[#{Time.now}] [RAILS-MCP] ERROR: Running from gem directory, not Rails application directory"
+    warn "[#{Time.now}] [RAILS-MCP] ERROR: Please run the server from your Rails application root directory"
+    warn "[#{Time.now}] [RAILS-MCP] ERROR: Example: cd /path/to/your/rails/app && /path/to/rails-active-mcp-gem/exe/rails-active-mcp-server stdio"
+    exit(1)
+  end
+
+  # Final check for Gemfile in current directory
+  unless File.exist?('Gemfile')
+    warn "[#{Time.now}] [RAILS-MCP] ERROR: Could not locate Gemfile in current directory: #{Dir.pwd}"
+    warn "[#{Time.now}] [RAILS-MCP] ERROR: Please ensure you're running from a Rails application root directory"
+    warn "[#{Time.now}] [RAILS-MCP] ERROR: Current directory contents:"
+    Dir.entries('.').each { |entry| warn "[#{Time.now}] [RAILS-MCP] ERROR:   #{entry}" unless entry.start_with?('.') }
+    exit(1)
+  end
+end
+
+# Log the working directory for debugging
+warn "[#{Time.now}] [RAILS-MCP] INFO: Working directory: #{Dir.pwd}" if should_redirect
+warn "[#{Time.now}] [RAILS-MCP] INFO: Gemfile found: #{File.exist?('Gemfile')}" if should_redirect
+
 case transport
 when 'stdio'
   # Stdio transport for Claude Desktop using MCP SDK

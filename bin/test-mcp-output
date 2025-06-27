@@ -1,34 +1,243 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Test script to verify MCP server output redirection
-puts 'Testing Rails Active MCP Server output redirection...'
+# Enhanced test script to diagnose MCP server output redirection and identify sources of interference
+puts '🔍 Enhanced Rails Active MCP Server Output Diagnostics'
+puts '=' * 80
 
-# Load the server executable directly (can't require it, so we'll test differently)
-puts 'Note: Testing without loading server (would cause LoadError in gem context)'
+# Test 1: Check working directory and Gemfile location
+puts "\n📁 Step 1: Checking working directory and Gemfile location..."
+puts "Current working directory: #{Dir.pwd}"
 
-# Check that log directory and file exist
+# Check for Gemfile in current directory
+if File.exist?('Gemfile')
+  puts '✅ Gemfile found in current directory'
+
+  # Show Gemfile info
+  gemfile_size = File.size('Gemfile')
+  puts "   Gemfile size: #{gemfile_size} bytes"
+
+  # Check for Gemfile.lock
+  if File.exist?('Gemfile.lock')
+    puts '✅ Gemfile.lock found'
+  else
+    puts "⚠️  Gemfile.lock not found - run 'bundle install' if needed"
+  end
+else
+  puts '❌ Gemfile NOT found in current directory'
+  puts "💡 This is likely the cause of 'Could not locate Gemfile' error"
+
+  # Look for Gemfile in nearby directories
+  puts "\n🔍 Searching for Gemfile in nearby directories..."
+
+  # Check parent directories
+  current_dir = Dir.pwd
+  5.times do
+    parent_dir = File.dirname(current_dir)
+    break if parent_dir == current_dir # reached root
+
+    gemfile_path = File.join(parent_dir, 'Gemfile')
+    if File.exist?(gemfile_path)
+      puts "✅ Found Gemfile in parent directory: #{parent_dir}"
+      puts "💡 You may need to run the server from: #{parent_dir}"
+      break
+    end
+    current_dir = parent_dir
+  end
+
+  # Check subdirectories
+  Dir.glob('*/Gemfile').each do |gemfile_path|
+    dir = File.dirname(gemfile_path)
+    puts "✅ Found Gemfile in subdirectory: #{File.join(Dir.pwd, dir)}"
+    puts "💡 You may need to run the server from: #{File.join(Dir.pwd, dir)}"
+  end
+end
+
+# Check current directory contents
+puts "\n📋 Current directory contents:"
+Dir.entries('.').reject { |entry| entry.start_with?('.') }.sort.each do |entry|
+  if File.directory?(entry)
+    puts "   📁 #{entry}/"
+  else
+    puts "   📄 #{entry}"
+  end
+end
+
+# Test 2: Check for log redirection
 log_dir = File.join(Dir.pwd, 'log')
 stderr_log = File.join(log_dir, 'rails_mcp_stderr.log')
 
+puts "\n📁 Step 2: Checking log file setup..."
 if File.exist?(stderr_log)
   puts "✅ stderr log file exists: #{stderr_log}"
 
   # Show recent log entries
   if File.size(stderr_log) > 0
-    puts "\n📋 Recent log entries:"
-    puts File.readlines(stderr_log).last(10).join
+    puts "\n📋 Recent log entries (last 20 lines):"
+    puts '-' * 60
+    puts File.readlines(stderr_log).last(20).join
+    puts '-' * 60
   else
-    puts '📋 Log file is empty (which is good if no errors occurred)'
+    puts '📋 Log file is empty (good - no errors during startup)'
   end
 else
   puts "❌ stderr log file does not exist: #{stderr_log}"
+  puts '💡 This may indicate output redirection is not working'
 end
 
-# Test that we can send JSON to stdout without interference
-puts "\n🧪 Testing JSON output..."
-require 'json'
-test_json = { test: 'This should be valid JSON', timestamp: Time.now.to_f }
-puts test_json.to_json
+# Test 3: Check Rails environment loading
+puts "\n📁 Step 3: Testing Rails environment loading..."
+if File.exist?('config/environment.rb')
+  puts '✅ Rails application detected'
 
-puts "\n✅ Test completed. Check that the JSON above is valid and no Rails output appeared."
+  # Test Rails loading with output capture
+  require 'stringio'
+  captured_stdout = StringIO.new
+  captured_stderr = StringIO.new
+
+  original_stdout = $stdout
+  original_stderr = $stderr
+
+  begin
+    $stdout = captured_stdout
+    $stderr = captured_stderr
+
+    require './config/environment'
+
+    puts '✅ Rails environment loaded successfully'
+  rescue StandardError => e
+    puts "⚠️  Rails loading error: #{e.class.name}: #{e.message}"
+    puts "   This could be the source of 'Could not' messages"
+  ensure
+    $stdout = original_stdout
+    $stderr = original_stderr
+  end
+
+  # Check what was captured
+  stdout_content = captured_stdout.string
+  stderr_content = captured_stderr.string
+
+  unless stdout_content.empty?
+    puts "\n⚠️  STDOUT content during Rails loading:"
+    puts "   #{stdout_content.inspect}"
+    puts '   ↑ This content could interfere with MCP JSON protocol'
+  end
+
+  unless stderr_content.empty?
+    puts "\n📝 STDERR content during Rails loading:"
+    puts "   #{stderr_content.lines.first(5).join('   ')}"
+    puts '   ... (truncated)' if stderr_content.lines.length > 5
+  end
+
+else
+  puts '❌ No Rails application found (config/environment.rb missing)'
+end
+
+# Test 4: Database connectivity check
+puts "\n📁 Step 4: Testing database connectivity..."
+begin
+  if defined?(Rails) && Rails.respond_to?(:application)
+    ActiveRecord::Base.connection.execute('SELECT 1')
+    puts '✅ Database connection successful'
+  else
+    puts '⚠️  Rails not loaded, skipping database test'
+  end
+rescue StandardError => e
+  puts "⚠️  Database connection error: #{e.class.name}: #{e.message}"
+  puts "   Error details: #{e.message}"
+  if e.message.include?('Could not')
+    puts "   🎯 FOUND POTENTIAL SOURCE: This error contains 'Could not'"
+    puts '   💡 This database error may be leaking to stdout during server startup'
+  end
+end
+
+# Test 5: Test JSON output without interference
+puts "\n📁 Step 5: Testing clean JSON output..."
+require 'json'
+test_json = {
+  test: 'Rails Active MCP JSON Test',
+  timestamp: Time.now.to_f,
+  rails_env: defined?(Rails) ? Rails.env : 'not_loaded',
+  database_connected: begin
+    if defined?(ActiveRecord)
+      ActiveRecord::Base.connection.execute('SELECT 1')
+      true
+    else
+      false
+    end
+  rescue StandardError
+    false
+  end
+}
+
+puts '🧪 Test JSON (should be valid):'
+puts test_json.to_json
+puts '✅ JSON output test completed'
+
+# Test 6: MCP Server startup simulation
+puts "\n📁 Step 6: Simulating MCP server startup..."
+begin
+  require_relative '../lib/rails_active_mcp'
+  puts '✅ rails_active_mcp gem loaded successfully'
+  puts "   Version: #{RailsActiveMcp::VERSION}"
+rescue StandardError => e
+  puts "❌ Failed to load rails_active_mcp gem: #{e.message}"
+end
+
+# Test 7: Check for common "Could not" sources
+puts "\n📁 Step 7: Checking for common 'Could not' error sources..."
+
+common_sources = [
+  'Database connection failure',
+  'Missing database configuration',
+  'Missing secret key base',
+  'Asset compilation issues',
+  'Missing environment variables',
+  'File permission issues'
+]
+
+# Test database config
+begin
+  if defined?(Rails)
+    db_config = Rails.application.config.database_configuration
+    current_env = Rails.env || 'development'
+
+    if db_config[current_env].nil?
+      puts "⚠️  Missing database configuration for #{current_env} environment"
+      puts "   This could cause 'Could not find database' errors"
+    else
+      puts "✅ Database configuration found for #{current_env}"
+    end
+  end
+rescue StandardError => e
+  puts "⚠️  Error checking database config: #{e.message}"
+end
+
+# Test secret key base
+begin
+  if defined?(Rails) && Rails.application.respond_to?(:secret_key_base)
+    if Rails.application.secret_key_base.nil? || Rails.application.secret_key_base.empty?
+      puts '⚠️  Missing or empty secret_key_base'
+      puts "   This could cause 'Could not generate' errors"
+    else
+      puts '✅ Secret key base is configured'
+    end
+  end
+rescue StandardError => e
+  puts "⚠️  Error checking secret key base: #{e.message}"
+end
+
+puts "\n🏁 Diagnostic Summary:"
+puts '=' * 80
+puts '1. Check if Gemfile exists in current directory (most common cause)'
+puts '2. Check the log file above for any error messages'
+puts "3. Look for any 'Could not' messages in the Rails loading output"
+puts "4. Database connectivity issues are a common source of 'Could not' errors"
+puts '5. Run with RAILS_MCP_DEBUG=1 to see more detailed output'
+puts ''
+puts '🚀 Next steps:'
+puts '   • If Gemfile not found: cd to correct Rails app directory'
+puts '   • If database errors found: Check config/database.yml'
+puts '   • If Rails loading errors: Check config/application.rb and initializers'
+puts "   • If 'Could not' found: Address the specific error before running MCP server"
+puts '   • Test again: ./exe/rails-active-mcp-server stdio'
