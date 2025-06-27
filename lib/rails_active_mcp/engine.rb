@@ -13,6 +13,22 @@ module RailsActiveMcp
       g.helper false
     end
 
+    # Define routes for the engine
+    routes do
+      # Main MCP endpoint for HTTP clients
+      post '/', to: 'mcp#handle'
+      post '/messages', to: 'mcp#handle'
+
+      # SSE endpoint for better MCP client compatibility
+      get '/sse', to: 'mcp#sse'
+
+      # Health check endpoint
+      get '/health', to: 'mcp#health'
+
+      # Root redirect
+      root to: 'mcp#info'
+    end
+
     initializer 'rails_active_mcp.configure' do |app|
       # Load configuration from Rails config if present
       if app.config.respond_to?(:rails_active_mcp)

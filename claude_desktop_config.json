@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "rails-active-mcp": {
+      "command": "bin/rails-active-mcp-server",
+      "args": ["stdio"],
+      "cwd": "/Users/brandyn/Documents/development/ascend-health-plus",
+      "env": {
+        "RAILS_ENV": "development"
+      }
+    }
+  }
+} 

@@ -1,0 +1,15 @@
+#!/usr/bin/env ruby
+
+# Binstub for Rails Active MCP Server
+# This ensures the server runs within the Rails project context
+
+require 'bundler/setup'
+
+# Set Rails environment
+ENV['RAILS_ENV'] ||= 'development'
+
+# Load Rails application
+require_relative '../config/environment'
+
+# Now run the actual MCP server
+load Gem.bin_path('rails_active_mcp', 'rails-active-mcp-server')

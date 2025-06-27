@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'json'
+require 'io/console'
 require 'logger'
 
 module RailsActiveMcp
@@ -10,51 +11,112 @@ module RailsActiveMcp
 
     def initialize
       @tools = {}
-      @logger = Logger.new(STDERR) # Log to stderr to avoid interfering with stdout
-      @logger.level = ENV['RAILS_MCP_DEBUG'] ? Logger::DEBUG : Logger::ERROR
-      @logger.formatter = proc do |severity, datetime, progname, msg|
-        "[#{datetime}] [RAILS-MCP] #{severity}: #{msg}\n"
-      end
+      @mcp_server = McpServer.new
+      @running = false
+
+      # Ensure all logging goes to stderr, never stdout
+      setup_logging
       register_default_tools
-      @logger.info "Rails Active MCP Server initialized with #{@tools.size} tools"
+      log_to_stderr "Rails Active MCP Server initialized with #{@tools.size} tools", level: :info
     end
 
-    def run
-      @logger.info 'Starting Rails Active MCP Stdio Server'
-      send_log_notification('info', 'Rails Active MCP Server started successfully')
+    def start
+      @running = true
+      log_to_stderr 'Rails Active MCP Server started successfully', level: :info
 
-      STDIN.each_line do |line|
-        line = line.strip
-        next if line.empty?
+      # Send initial notification to stderr first, then stdout for MCP
+      send_notification('info', 'Rails Active MCP Server started successfully')
 
-        @logger.debug "Received request: #{line}" if ENV['RAILS_MCP_DEBUG']
-        data = JSON.parse(line)
+      process_requests
+    end
 
-        @logger.debug "Processing method: #{data['method']}" if ENV['RAILS_MCP_DEBUG']
-        response = handle_jsonrpc_request(data)
-
-        if response
-          @logger.debug "Sending response: #{response.to_json}" if ENV['RAILS_MCP_DEBUG']
-          puts response.to_json
-          STDOUT.flush
-        end
-      rescue JSON::ParserError => e
-        @logger.error "JSON Parse Error: #{e.message}"
-        send_log_notification('error', "JSON Parse Error: #{e.message}")
-        error_response = jsonrpc_error(nil, -32_700, 'Parse error')
-        puts error_response.to_json
-        STDOUT.flush
-      rescue StandardError => e
-        @logger.error "Unexpected error: #{e.message}"
-        @logger.error e.backtrace.join("\n")
-        send_log_notification('error', "Server error: #{e.message}")
-        error_response = jsonrpc_error(nil, -32_603, 'Internal error')
-        puts error_response.to_json
-        STDOUT.flush
-      end
+    def stop
+      @running = false
+      log_to_stderr 'Rails Active MCP Server stopped', level: :info
     end
 
     private
+
+    def setup_logging
+      # Configure Rails Active MCP logger to use stderr
+      return unless RailsActiveMcp.respond_to?(:logger=)
+
+      stderr_logger = Logger.new($stderr)
+      stderr_logger.level = ENV['RAILS_MCP_DEBUG'] == '1' ? Logger::DEBUG : Logger::INFO
+      stderr_logger.formatter = proc do |severity, datetime, progname, msg|
+        "[#{datetime.strftime('%Y-%m-%d %H:%M:%S %z')}] [RAILS-MCP] #{severity}: #{msg}\n"
+      end
+      RailsActiveMcp.logger = stderr_logger
+    end
+
+    def process_requests
+      while @running
+        begin
+          line = $stdin.gets
+          break if line.nil?
+
+          line = line.strip
+          next if line.empty?
+
+          log_to_stderr "Received request: #{line}", level: :debug
+
+          request = JSON.parse(line)
+          log_to_stderr "Processing method: #{request['method']}", level: :debug
+
+          response = @mcp_server.handle_jsonrpc_request(request)
+
+          log_to_stderr "Sending response: #{response.to_json}", level: :debug
+
+          # Only JSON responses go to stdout
+          $stdout.puts response.to_json
+          $stdout.flush
+        rescue JSON::ParserError => e
+          log_to_stderr "JSON parse error: #{e.message}", level: :error
+          send_error_response(nil, -32_700, 'Parse error')
+        rescue StandardError => e
+          log_to_stderr "Server error: #{e.message}", level: :error
+          log_to_stderr e.backtrace.join("\n"), level: :debug
+          send_error_response(nil, -32_603, 'Internal error')
+        end
+      end
+    end
+
+    def send_notification(level, message)
+      notification = {
+        jsonrpc: JSONRPC_VERSION,
+        method: 'notifications/message',
+        params: {
+          level: level,
+          data: message
+        }
+      }
+
+      # Notifications go to stdout for MCP protocol
+      $stdout.puts notification.to_json
+      $stdout.flush
+    end
+
+    def send_error_response(id, code, message)
+      error_response = {
+        jsonrpc: JSONRPC_VERSION,
+        id: id,
+        error: {
+          code: code,
+          message: message
+        }
+      }
+
+      $stdout.puts error_response.to_json
+      $stdout.flush
+    end
+
+    def log_to_stderr(message, level: :info)
+      return unless ENV['RAILS_MCP_DEBUG'] == '1' || level == :error || level == :info
+
+      timestamp = Time.now.strftime('%Y-%m-%d %H:%M:%S %z')
+      warn "[#{timestamp}] [RAILS-MCP] #{level.to_s.upcase}: #{message}"
+      $stderr.flush
+    end
 
     def handle_jsonrpc_request(data)
       case data['method']
@@ -121,16 +183,16 @@ module RailsActiveMcp
       tool = @tools[tool_name]
       return jsonrpc_error(data['id'], -32_602, "Tool '#{tool_name}' not found") unless tool
 
-      @logger.info "Executing tool: #{tool_name}"
-      send_log_notification('info', "Executing tool: #{tool_name}")
+      log_to_stderr "Executing tool: #{tool_name}", level: :info
+      send_notification('info', "Executing tool: #{tool_name}")
 
       begin
         start_time = Time.now
         result = tool[:handler].call(arguments)
         execution_time = Time.now - start_time
 
-        @logger.info "Tool #{tool_name} completed in #{execution_time}s"
-        send_log_notification('info', "Tool #{tool_name} completed successfully")
+        log_to_stderr "Tool #{tool_name} completed in #{execution_time}s", level: :info
+        send_notification('info', "Tool #{tool_name} completed successfully")
 
         {
           jsonrpc: JSONRPC_VERSION,
@@ -141,9 +203,9 @@ module RailsActiveMcp
           }
         }
       rescue StandardError => e
-        @logger.error "Tool execution error: #{e.message}"
-        @logger.error e.backtrace.first(5).join("\n") if ENV['RAILS_MCP_DEBUG']
-        send_log_notification('error', "Tool #{tool_name} failed: #{e.message}")
+        log_to_stderr "Tool execution error: #{e.message}", level: :error
+        log_to_stderr e.backtrace.first(5).join("\n"), level: :debug if ENV['RAILS_MCP_DEBUG']
+        send_notification('error', "Tool #{tool_name} failed: #{e.message}")
 
         {
           jsonrpc: JSONRPC_VERSION,
@@ -442,22 +504,6 @@ module RailsActiveMcp
       output << "Execution time: #{result[:execution_time]}s" if result[:execution_time]
       output << "Note: #{result[:note]}" if result[:note]
       output.join("\n")
-    end
-
-    def send_log_notification(level, message)
-      notification = {
-        jsonrpc: JSONRPC_VERSION,
-        method: 'notifications/message',
-        params: {
-          level: level,
-          data: message
-        }
-      }
-
-      puts notification.to_json
-      STDOUT.flush
-    rescue StandardError => e
-      @logger.error "Failed to send log notification: #{e.message}"
     end
 
     def jsonrpc_error(id, code, message)

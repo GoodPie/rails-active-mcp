@@ -35,12 +35,6 @@ module RailsActiveMcp
       end
     end
 
-    private
-
-    def json_request?(request)
-      request.content_type&.include?('application/json')
-    end
-
     def handle_jsonrpc_request(data)
       case data['method']
       when 'initialize'
@@ -53,9 +47,19 @@ module RailsActiveMcp
         handle_resources_list(data)
       when 'resources/read'
         handle_resources_read(data)
+      when 'ping'
+        handle_ping(data)
       else
         jsonrpc_error(data['id'], -32_601, 'Method not found')
       end
+    end
+
+    def handle_ping(data)
+      {
+        jsonrpc: JSONRPC_VERSION,
+        id: data['id'],
+        result: {}
+      }
     end
 
     def handle_initialize(data)
@@ -146,6 +150,12 @@ module RailsActiveMcp
         annotations: annotations,
         handler: handler
       }
+    end
+
+    private
+
+    def json_request?(request)
+      request.content_type&.include?('application/json')
     end
 
     def register_default_tools

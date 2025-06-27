@@ -30,12 +30,13 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ['lib']
 
-  # Dependencies
-  spec.add_runtime_dependency 'concurrent-ruby', '~> 1.3.5'
-  spec.add_runtime_dependency 'rails', '~> 7.0'
+  # Runtime dependencies - more flexible Rails version support
+  spec.add_runtime_dependency 'concurrent-ruby', '~> 1.3'
+  spec.add_runtime_dependency 'rails', '>= 6.1', '< 8.0'
 
+  # Core dependencies
   spec.add_dependency 'json', '~> 2.0'
-  spec.add_dependency 'rack', '~> 3.0'
+  spec.add_dependency 'rack', '>= 2.0', '< 4.0'
   spec.add_dependency 'timeout', '~> 0.4'
   spec.add_dependency 'webrick', '~> 1.8'
 

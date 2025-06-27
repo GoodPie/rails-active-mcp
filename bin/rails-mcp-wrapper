@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+# Source asdf to make it available
+export ASDF_DIR="/Users/brandyn/.asdf"
+export PATH="/Users/brandyn/.asdf/shims:/Users/brandyn/.asdf/bin:$PATH"
+
+# Source asdf if it exists
+if [ -f "$ASDF_DIR/asdf.sh" ]; then
+    source "$ASDF_DIR/asdf.sh"
+fi
+
+# Change to the Rails project directory
+cd "/Users/brandyn/Documents/development/ascend-health-plus"
+
+# Execute the Rails Active MCP server with all arguments
+exec bundle exec rails-active-mcp-server "$@" 
