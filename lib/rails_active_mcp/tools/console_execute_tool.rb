@@ -1,13 +1,13 @@
 module RailsActiveMcp
   module Tools
     class ConsoleExecuteTool < ApplicationMCPTool
-      tool_name "console_execute"
-      description "Execute Ruby code in Rails console with safety checks"
+      tool_name 'console_execute'
+      description 'Execute Ruby code in Rails console with safety checks'
 
-      property :code, type: "string", description: 'Ruby code to execute in Rails console', required: true
-      property :safe_mode, type: "boolean", description: 'Enable safety checks (default: true)', required: false
-      property :timeout, type: "integer", description: 'Timeout in seconds (default: 30)', required: false
-      property :capture_output, type: "boolean", description: 'Capture console output (default: true)', required: false
+      property :code, type: 'string', description: 'Ruby code to execute in Rails console', required: true
+      property :safe_mode, type: 'boolean', description: 'Enable safety checks (default: true)', required: false
+      property :timeout, type: 'integer', description: 'Timeout in seconds (default: 30)', required: false
+      property :capture_output, type: 'boolean', description: 'Capture console output (default: true)', required: false
 
       def perform
         code = properties[:code]
@@ -15,7 +15,7 @@ module RailsActiveMcp
         timeout = properties[:timeout]
         capture_output = properties.fetch(:capture_output, true)
 
-        return render(error: "Rails Active MCP is disabled") unless RailsActiveMcp.config.enabled
+        return render(error: 'Rails Active MCP is disabled') unless RailsActiveMcp.config.enabled
 
         executor = RailsActiveMcp::ConsoleExecutor.new(RailsActiveMcp.config)
 
@@ -36,7 +36,7 @@ module RailsActiveMcp
           render(error: ["Safety check failed: #{e.message}"])
         rescue RailsActiveMcp::TimeoutError => e
           render(error: ["Execution timed out: #{e.message}"])
-        rescue => e
+        rescue StandardError => e
           render(error: ["Execution failed: #{e.message}"])
         end
       end
