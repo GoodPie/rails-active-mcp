@@ -82,14 +82,28 @@ module RailsActiveMcp
         say "\n" + '=' * 50, :green
         say 'Rails Active MCP Installation Complete!', :green
         say '=' * 50, :green
-        say "\nNext steps:", :green
-        say '1. Configure the gem in config/initializers/rails_active_mcp.rb', :yellow
-        say '2. For Claude Desktop, use: bin/rails-active-mcp-server stdio', :yellow
-        say '3. For HTTP mode, use: bin/rails-active-mcp-server http', :yellow
-        say '4. Alternative: bundle exec rails-active-mcp-server stdio', :yellow
+        say "\nFor Claude Desktop configuration:", :green
+        say 'Add this to your claude_desktop_config.json:', :yellow
+        say '', :green
+        say '{', :cyan
+        say '  "mcpServers": {', :cyan
+        say '    "rails-active-mcp": {', :cyan
+        say "      \"command\": \"#{Rails.root}/bin/rails-active-mcp-server\",", :cyan
+        say '      "args": ["stdio"],', :cyan
+        say "      \"cwd\": \"#{Rails.root}\",", :cyan
+        say '      "env": { "RAILS_ENV": "development" }', :cyan
+        say '    }', :cyan
+        say '  }', :cyan
+        say '}', :cyan
+        say '', :green
+        say "\nTesting:", :green
+        say '1. Test manually: bin/rails-active-mcp-server stdio', :yellow
+        say '2. Should output JSON (not plain text)', :yellow
+        say '3. Restart Claude Desktop after config changes', :yellow
         say "\nTroubleshooting:", :green
+        say '- Use absolute paths to avoid version manager conflicts', :yellow
         say '- Set RAILS_MCP_DEBUG=1 for verbose logging', :yellow
-        say '- Check log/rails_mcp_stderr.log for errors', :yellow
+        say '- Check README.md for alternative configuration methods', :yellow
         say '=' * 50, :green
       end
 

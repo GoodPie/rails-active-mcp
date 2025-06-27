@@ -40,9 +40,12 @@ Next Steps:
    {
      "mcpServers": {
        "rails-active-mcp": {
-         "command": "bundle",
-         "args": ["exec", "rails-active-mcp-server", "stdio"],
-         "cwd": "/path/to/your/rails/project"
+         "command": "<%= Rails.root %>/bin/rails-active-mcp-server",
+         "args": ["stdio"],
+         "cwd": "<%= Rails.root %>",
+         "env": {
+           "RAILS_ENV": "development"
+         }
        }
      }
    }
