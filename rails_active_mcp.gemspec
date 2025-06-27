@@ -34,6 +34,9 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency 'concurrent-ruby', '~> 1.3'
   spec.add_runtime_dependency 'rails', '>= 6.1', '< 8.0'
 
+  # MCP SDK - Core protocol implementation
+  spec.add_runtime_dependency 'mcp', '~> 0.1.0'
+
   # Core dependencies
   spec.add_dependency 'json', '~> 2.0'
   spec.add_dependency 'rack', '>= 2.0', '< 4.0'

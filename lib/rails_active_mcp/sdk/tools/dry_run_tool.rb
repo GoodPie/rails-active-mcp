@@ -6,7 +6,7 @@ module RailsActiveMcp
   module Sdk
     module Tools
       class DryRunTool < MCP::Tool
-        description 'Analyze Ruby code for safety without executing'
+        description 'Analyze Ruby code for safety without executing it'
 
         input_schema(
           properties: {
@@ -19,7 +19,7 @@ module RailsActiveMcp
         )
 
         annotations(
-          title: 'Rails Code Safety Analyzer',
+          title: 'Code Safety Analyzer',
           destructive_hint: false,
           read_only_hint: true,
           idempotent_hint: true,
@@ -31,10 +31,32 @@ module RailsActiveMcp
 
           return error_response('Rails Active MCP is disabled') unless config.enabled
 
-          # For now, return a placeholder - will implement full logic later
+          executor = RailsActiveMcp::ConsoleExecutor.new(config)
+          analysis = executor.dry_run(code)
+
+          output = []
+          output << "Code: #{analysis[:code]}"
+          output << "Safe: #{analysis[:safety_analysis][:safe] ? 'Yes' : 'No'}"
+          output << "Read-only: #{analysis[:safety_analysis][:read_only] ? 'Yes' : 'No'}"
+          output << "Risk level: #{analysis[:estimated_risk]}"
+          output << "Summary: #{analysis[:safety_analysis][:summary]}"
+
+          if analysis[:safety_analysis][:violations].any?
+            output << "\nViolations:"
+            analysis[:safety_analysis][:violations].each do |violation|
+              output << "  - #{violation[:description]} (#{violation[:severity]})"
+            end
+          end
+
+          if analysis[:recommendations].any?
+            output << "\nRecommendations:"
+            analysis[:recommendations].each do |rec|
+              output << "  - #{rec}"
+            end
+          end
+
           MCP::Tool::Response.new([
-                                    { type: 'text',
-                                      text: "Dry Run Tool (SDK) - Code: #{code} - Implementation pending" }
+                                    { type: 'text', text: output.join("\n") }
                                   ])
         end
 

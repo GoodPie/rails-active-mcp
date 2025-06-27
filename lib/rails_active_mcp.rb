@@ -5,27 +5,14 @@ require_relative 'rails_active_mcp/version'
 require_relative 'rails_active_mcp/configuration'
 require_relative 'rails_active_mcp/safety_checker'
 require_relative 'rails_active_mcp/console_executor'
-require_relative 'rails_active_mcp/application_mcp_tool'
 
-# Load all tool classes
-require_relative 'rails_active_mcp/tools/console_execute_tool'
-require_relative 'rails_active_mcp/tools/model_info_tool'
-require_relative 'rails_active_mcp/tools/safe_query_tool'
-require_relative 'rails_active_mcp/tools/dry_run_tool'
-
-require_relative 'rails_active_mcp/tool_registry'
-require_relative 'rails_active_mcp/mcp_server'
-
-# Load Engine for Rails integration (consolidated from Railtie)
+# Load Engine for Rails integration
 require_relative 'rails_active_mcp/engine' if defined?(Rails)
 
 module RailsActiveMcp
   class Error < StandardError; end
-
   class SafetyError < Error; end
-
   class ExecutionError < Error; end
-
   class TimeoutError < Error; end
 
   class << self
@@ -51,15 +38,9 @@ module RailsActiveMcp
       ConsoleExecutor.new(config).execute(code, **options)
     end
 
-    # Access to MCP server instance
-    def server
-      @server ||= McpServer.new
-    end
-
-    # Logger accessor - configured by railtie or defaults to stderr
+    # Logger accessor - configured by engine or defaults to stderr
     attr_accessor :logger
 
-    # Logger accessor - configured by railtie or defaults to stderr
     def logger
       @logger ||= Logger.new($stderr).tap do |logger|
         logger.level = Logger::INFO
