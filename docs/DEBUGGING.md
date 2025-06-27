@@ -60,10 +60,10 @@ This enables:
 1. Click the 🔌 icon to view connected servers
 2. Click the "Search and tools" 🔍 icon to view available tools
 3. Look for these Rails Active MCP tools:
-   - `rails_console_execute`
-   - `rails_model_info`
-   - `rails_safe_query`
-   - `rails_dry_run`
+   - `console_execute`
+   - `model_info`
+   - `safe_query`
+   - `dry_run`
 
 #### Viewing Claude Desktop Logs
 
@@ -278,7 +278,7 @@ Should return all 4 Rails Active MCP tools.
 
 ```bash
 # Test a simple tool call
-echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"rails_dry_run","arguments":{"code":"puts \"Hello World\""}}}' | bundle exec rails-active-mcp-server stdio
+echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"dry_run","arguments":{"code":"puts \"Hello World\""}}}' | bundle exec rails-active-mcp-server
 ```
 
 ## Best Practices

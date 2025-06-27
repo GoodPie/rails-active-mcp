@@ -32,7 +32,10 @@ Gem::Specification.new do |spec|
 
   # Runtime dependencies - more flexible Rails version support
   spec.add_runtime_dependency 'concurrent-ruby', '~> 1.3'
-  spec.add_runtime_dependency 'rails', '>= 6.1', '< 8.0'
+  spec.add_runtime_dependency 'rails', '>= 6.1', '< 9.0'
+
+  # MCP SDK - Core protocol implementation
+  spec.add_runtime_dependency 'mcp', '~> 0.1.0'
 
   # Core dependencies
   spec.add_dependency 'json', '~> 2.0'

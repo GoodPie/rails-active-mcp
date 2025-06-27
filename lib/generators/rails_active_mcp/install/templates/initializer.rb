@@ -1,43 +1,42 @@
 require 'rails_active_mcp'
 
 RailsActiveMcp.configure do |config|
-  # Enable/disable the MCP server
-  config.enabled = true
+  # Core configuration options
+  config.allowed_commands = %w[
+    ls pwd cat head tail grep find wc
+    rails console rails runner
+    bundle exec rspec bundle exec test
+    git status git log git diff
+  ]
 
-  # Safety configuration
-  config.safe_mode = Rails.env.production? # Always safe in production
-  config.default_timeout = 30 # seconds
-  config.max_results = 100
+  # Execution timeout in seconds
+  config.command_timeout = 30
 
-  # Model access control
-  # config.allowed_models = %w[User Post Comment]  # Empty means all allowed
-  # config.blocked_models = %w[AdminUser Secret]   # Models to never allow access
+  # Logging configuration
+  config.enable_logging = true
+  config.log_level = :info # :debug, :info, :warn, :error
 
-  # Mutation tools (dangerous operations)
-  config.enable_mutation_tools = !Rails.env.production?
-
-  # Logging and auditing
-  config.log_executions = true
-  config.audit_file = Rails.root.join('log', 'rails_active_mcp.log')
-
-  # Server configuration
-  config.server_mode = :stdio # :stdio for Claude Desktop, :http for web integrations
-  config.server_host = 'localhost'
-  config.server_port = 3001
-
-  # Environment-specific settings
-  case Rails.env
-  when 'production'
-    config.production_mode! # Very strict settings
-  when 'development'
-    config.permissive_mode! # More relaxed for development
-  when 'test'
-    config.strict_mode! # Safe for testing
+  # Environment-specific adjustments
+  if Rails.env.production?
+    # More restrictive settings for production
+    config.log_level = :warn
+    config.command_timeout = 15
+  elsif Rails.env.development?
+    # More permissive settings for development
+    config.log_level = :debug
+    config.command_timeout = 60
   end
-
-  # Add custom safety patterns
-  # config.add_safety_pattern(/CustomDangerousMethod/, "Custom dangerous operation")
-
-  # Operations that require manual confirmation
-  config.require_confirmation_for = %i[delete destroy update_all delete_all]
 end
+
+# Rails Active MCP is now ready!
+#
+# Available MCP Tools:
+# - console_execute: Execute Ruby code with safety checks
+# - model_info: Get detailed information about Rails models
+# - safe_query: Execute safe read-only database queries
+# - dry_run: Analyze Ruby code for safety without execution
+#
+# To start the server:
+#   bin/rails-active-mcp-server
+#
+# For Claude Desktop integration, see the post-install instructions.

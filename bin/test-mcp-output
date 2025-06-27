@@ -1,0 +1,34 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Test script to verify MCP server output redirection
+puts 'Testing Rails Active MCP Server output redirection...'
+
+# Load the server executable directly (can't require it, so we'll test differently)
+puts 'Note: Testing without loading server (would cause LoadError in gem context)'
+
+# Check that log directory and file exist
+log_dir = File.join(Dir.pwd, 'log')
+stderr_log = File.join(log_dir, 'rails_mcp_stderr.log')
+
+if File.exist?(stderr_log)
+  puts "✅ stderr log file exists: #{stderr_log}"
+
+  # Show recent log entries
+  if File.size(stderr_log) > 0
+    puts "\n📋 Recent log entries:"
+    puts File.readlines(stderr_log).last(10).join
+  else
+    puts '📋 Log file is empty (which is good if no errors occurred)'
+  end
+else
+  puts "❌ stderr log file does not exist: #{stderr_log}"
+end
+
+# Test that we can send JSON to stdout without interference
+puts "\n🧪 Testing JSON output..."
+require 'json'
+test_json = { test: 'This should be valid JSON', timestamp: Time.now.to_f }
+puts test_json.to_json
+
+puts "\n✅ Test completed. Check that the JSON above is valid and no Rails output appeared."

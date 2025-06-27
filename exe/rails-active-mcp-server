@@ -5,15 +5,25 @@ require 'rack'
 require 'json'
 require 'stringio'
 
-# Suppress ALL output immediately when not in debug mode to prevent MCP JSON protocol interference
+# Suppress ALL output immediately when running stdio mode to prevent MCP JSON protocol interference
 original_stdout = $stdout
 original_stderr = $stderr
 
-# Only suppress if we're likely running in stdio mode (for Claude) and not debugging
-if ARGV.first == 'stdio' && !ENV['RAILS_MCP_DEBUG']
-  # Redirect to temporary StringIO until Rails loading is complete
+# Determine if we should redirect output (stdio mode or explicit request)
+should_redirect = (ARGV.first == 'stdio' || ARGV.first.nil?) && !ENV['RAILS_MCP_DEBUG']
+
+if should_redirect
+  # Create log directory early
+  log_dir = File.join(Dir.pwd, 'log')
+  Dir.mkdir(log_dir) unless Dir.exist?(log_dir)
+
+  # Redirect stderr to log file immediately, before Rails loading
+  stderr_log = File.join(log_dir, 'rails_mcp_stderr.log')
+  $stderr.reopen(stderr_log, 'a')
+  $stderr.sync = true
+
+  # Redirect stdout to null to prevent any Rails output from interfering
   $stdout = StringIO.new
-  $stderr = StringIO.new
 end
 
 # Initialize Rails environment if available (from current working directory)
@@ -24,16 +34,14 @@ if File.exist?('config/environment.rb')
     rails_loaded = true
   rescue StandardError => e
     # Rails loading failed, continue without it
-    # Only show warning in debug mode
-    warn "Warning: Failed to load Rails environment: #{e.message}" if ENV['RAILS_MCP_DEBUG']
+    # Log to stderr (which is already redirected if needed)
+    warn "[#{Time.now}] [RAILS-MCP] WARNING: Failed to load Rails environment: #{e.message}"
+    warn "[#{Time.now}] [RAILS-MCP] WARNING: #{e.backtrace.first(3).join("\n")}" if ENV['RAILS_MCP_DEBUG']
   end
 end
 
-# Restore stdout/stderr after Rails loading for non-debug stdio mode
-if ARGV.first == 'stdio' && !ENV['RAILS_MCP_DEBUG']
-  $stdout = original_stdout
-  $stderr = original_stderr
-end
+# Restore stdout after Rails loading for stdio mode (stderr stays redirected)
+$stdout = original_stdout if should_redirect
 
 # Now load the gem
 require_relative '../lib/rails_active_mcp'
@@ -65,19 +73,6 @@ when 'stdio'
   require_relative '../lib/rails_active_mcp/stdio_server'
 
   begin
-    # Final stderr redirection to prevent any remaining output from interfering with MCP JSON protocol
-    # This is critical because Claude Desktop expects ONLY JSON on stdout and ANY non-JSON breaks the protocol
-    unless ENV['RAILS_MCP_DEBUG']
-      # Create log directory if it doesn't exist
-      log_dir = File.join(Dir.pwd, 'log')
-      Dir.mkdir(log_dir) unless Dir.exist?(log_dir)
-
-      # Redirect stderr to log file
-      stderr_log = File.join(log_dir, 'rails_mcp_stderr.log')
-      $stderr.reopen(stderr_log, 'a')
-      $stderr.sync = true
-    end
-
     stdio_server = RailsActiveMcp::StdioServer.new
     stdio_server.start
   rescue Interrupt

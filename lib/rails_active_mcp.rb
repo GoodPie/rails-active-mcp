@@ -5,18 +5,14 @@ require_relative 'rails_active_mcp/version'
 require_relative 'rails_active_mcp/configuration'
 require_relative 'rails_active_mcp/safety_checker'
 require_relative 'rails_active_mcp/console_executor'
-require_relative 'rails_active_mcp/mcp_server'
 
 # Load Engine for Rails integration
 require_relative 'rails_active_mcp/engine' if defined?(Rails)
 
 module RailsActiveMcp
   class Error < StandardError; end
-
   class SafetyError < Error; end
-
   class ExecutionError < Error; end
-
   class TimeoutError < Error; end
 
   class << self
@@ -42,16 +38,11 @@ module RailsActiveMcp
       ConsoleExecutor.new(config).execute(code, **options)
     end
 
-    # Access to MCP server instance
-    def server
-      @server ||= McpServer.new
-    end
-
-    # Logger accessor - configured by railtie or defaults to stderr
+    # Logger accessor - configured by engine or defaults to stderr
     attr_accessor :logger
 
     def logger
-      @logger ||= Logger.new(STDERR).tap do |logger|
+      @logger ||= Logger.new($stderr).tap do |logger|
         logger.level = Logger::INFO
         logger.formatter = proc do |severity, datetime, progname, msg|
           "[#{datetime}] #{severity} -- RailsActiveMcp: #{msg}\n"
