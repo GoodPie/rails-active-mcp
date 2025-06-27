@@ -40,7 +40,7 @@ module RailsActiveMcp
                               else
                                 # Fallback to our own logger if Rails logger is not available
                                 # This should not happen in normal Rails apps but provides safety
-                                Logger.new(STDOUT).tap do |logger|
+                                Logger.new(STDERR).tap do |logger|
                                   logger.level = Rails.env.production? ? Logger::WARN : Logger::INFO
                                   logger.formatter = proc do |severity, datetime, progname, msg|
                                     "[#{datetime}] #{severity} -- RailsActiveMcp: #{msg}\n"

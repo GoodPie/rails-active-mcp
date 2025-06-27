@@ -4,20 +4,52 @@
 require 'rack'
 require 'json'
 require 'stringio'
+
+# Suppress ALL output immediately when not in debug mode to prevent MCP JSON protocol interference
+original_stdout = $stdout
+original_stderr = $stderr
+
+# Only suppress if we're likely running in stdio mode (for Claude) and not debugging
+if ARGV.first == 'stdio' && !ENV['RAILS_MCP_DEBUG']
+  # Redirect to temporary StringIO until Rails loading is complete
+  $stdout = StringIO.new
+  $stderr = StringIO.new
+end
+
+# Initialize Rails environment if available (from current working directory)
+rails_loaded = false
+if File.exist?('config/environment.rb')
+  begin
+    require './config/environment'
+    rails_loaded = true
+  rescue StandardError => e
+    # Rails loading failed, continue without it
+    # Only show warning in debug mode
+    warn "Warning: Failed to load Rails environment: #{e.message}" if ENV['RAILS_MCP_DEBUG']
+  end
+end
+
+# Restore stdout/stderr after Rails loading for non-debug stdio mode
+if ARGV.first == 'stdio' && !ENV['RAILS_MCP_DEBUG']
+  $stdout = original_stdout
+  $stderr = original_stderr
+end
+
+# Now load the gem
 require_relative '../lib/rails_active_mcp'
 
-# Parse command line options with config defaults
-default_mode = if defined?(RailsActiveMcp) && RailsActiveMcp.respond_to?(:config)
+# Parse command line options with config defaults (only after Rails is loaded)
+default_mode = if rails_loaded && defined?(RailsActiveMcp) && RailsActiveMcp.respond_to?(:config)
                  RailsActiveMcp.config.server_mode.to_s
                else
                  'stdio'
                end
-default_port = if defined?(RailsActiveMcp) && RailsActiveMcp.respond_to?(:config)
+default_port = if rails_loaded && defined?(RailsActiveMcp) && RailsActiveMcp.respond_to?(:config)
                  RailsActiveMcp.config.server_port
                else
                  3001
                end
-default_host = if defined?(RailsActiveMcp) && RailsActiveMcp.respond_to?(:config)
+default_host = if rails_loaded && defined?(RailsActiveMcp) && RailsActiveMcp.respond_to?(:config)
                  RailsActiveMcp.config.server_host
                else
                  'localhost'
@@ -33,47 +65,29 @@ when 'stdio'
   require_relative '../lib/rails_active_mcp/stdio_server'
 
   begin
-    # Redirect stderr to a log file to prevent interference with MCP JSON protocol
-    # This is essential because Claude Desktop parses stderr as JSON and any warnings/errors cause failures
-    if ENV['RAILS_MCP_DEBUG']
-      # In debug mode, keep stderr visible
-      stderr_target = STDERR
-    else
-      # In normal mode, redirect stderr to a log file
+    # Final stderr redirection to prevent any remaining output from interfering with MCP JSON protocol
+    # This is critical because Claude Desktop expects ONLY JSON on stdout and ANY non-JSON breaks the protocol
+    unless ENV['RAILS_MCP_DEBUG']
+      # Create log directory if it doesn't exist
       log_dir = File.join(Dir.pwd, 'log')
       Dir.mkdir(log_dir) unless Dir.exist?(log_dir)
+
+      # Redirect stderr to log file
       stderr_log = File.join(log_dir, 'rails_mcp_stderr.log')
-      stderr_target = File.open(stderr_log, 'a')
-    end
-
-    # Initialize Rails environment if available (from current working directory)
-    if File.exist?('config/environment.rb')
-      # Suppress Rails output to avoid interfering with MCP JSON protocol
-      original_stdout = $stdout
-      original_stderr = $stderr
-      $stdout = StringIO.new
-      $stderr = stderr_target
-
-      begin
-        require './config/environment'
-      rescue StandardError => e
-        # Don't output to stderr as it interferes with MCP JSON protocol
-        # The server can work without Rails environment
-      ensure
-        $stdout = original_stdout
-        $stderr = original_stderr
-        stderr_target.close if stderr_target.is_a?(File)
-      end
+      $stderr.reopen(stderr_log, 'a')
+      $stderr.sync = true
     end
 
     stdio_server = RailsActiveMcp::StdioServer.new
-    stdio_server.run
+    stdio_server.start
   rescue Interrupt
     exit(0)
   end
 
 when 'http'
   # HTTP transport for other integrations
+  puts 'Warning: Rails environment not loaded. Some features may not work properly.' unless rails_loaded
+
   puts "Starting Rails Active MCP Server on #{host}:#{port}"
   puts 'Press Ctrl+C to stop'
 
@@ -98,6 +112,9 @@ when 'http'
 else
   puts 'Usage: rails-active-mcp-server [stdio|http] [--port PORT] [--host HOST]'
   puts '  stdio: For Claude Desktop integration'
-  puts '  http:  For HTTP-based integrations (default)'
+  puts '  http:  For HTTP-based integrations'
+  puts ''
+  puts 'Environment variables:'
+  puts '  RAILS_MCP_DEBUG=1  Enable debug logging'
   exit(1)
 end
