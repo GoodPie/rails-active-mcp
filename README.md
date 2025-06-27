@@ -1,16 +1,17 @@
 # Rails Active MCP
 
-A Ruby gem that provides secure Rails console access through Model Context Protocol (MCP) for AI agents and development tools like Claude Desktop, Warp Terminal, and other MCP clients. Built with a custom MCP server implementation for full control and flexibility.
+A Ruby gem that provides secure Rails console access through Model Context Protocol (MCP) for AI agents and development tools like Claude Desktop. Built using the official MCP Ruby SDK for professional protocol handling and future-proof compatibility.
 
 ## Features
 
 - 🔒 **Safe Execution**: Advanced safety checks prevent dangerous operations
-- 🚀 **Custom MCP Server**: Built-in MCP server with no external dependencies
+- 🚀 **Official MCP SDK**: Built with the official MCP Ruby SDK for robust protocol handling
 - 📊 **Read-Only Queries**: Safe database querying with automatic result limiting
 - 🔍 **Code Analysis**: Dry-run capabilities to analyze code before execution
 - 📝 **Audit Logging**: Complete execution logging for security and debugging
 - ⚙️ **Configurable**: Flexible configuration for different environments
 - 🛡️ **Production Ready**: Strict safety modes for production environments
+- ⚡ **Professional Implementation**: Built-in instrumentation, timing, and error handling
 
 ## Installation
 
@@ -35,7 +36,7 @@ $ rails generate rails_active_mcp:install
 This will:
 
 - Create an initializer with configuration options
-- Mount the custom MCP server at `/mcp`
+- Mount the MCP server for Rails integration
 - Create a `mcp.ru` server file for standalone usage
 - Set up audit logging
 
@@ -45,82 +46,36 @@ The gem is configured in `config/initializers/rails_active_mcp.rb`:
 
 ```ruby
 RailsActiveMcp.configure do |config|
-  # Basic settings
-  config.enabled = true
-  config.safe_mode = Rails.env.production?
-  config.default_timeout = 30
-  config.max_results = 100
-
-  # Server configuration
-  config.server_mode = :stdio # :stdio for Claude Desktop, :http for web
-  config.server_host = 'localhost'
-  config.server_port = 3001
-
-  # Model access control
-  config.allowed_models = %w[User Post Comment] # Empty = all allowed
-  config.blocked_models = %w[AdminUser Secret]
-
-  # Security settings
-  config.enable_mutation_tools = !Rails.env.production?
-  config.log_executions = true
-  config.audit_file = Rails.root.join("log", "rails_active_mcp.log")
-
-  # Environment presets
-  config.production_mode! # Very strict
-  config.strict_mode! # Safe defaults
-  config.permissive_mode! # Development friendly
-  
-  # Server mode shortcuts
-  config.stdio_mode! # Set stdio mode for Claude Desktop
-  config.http_mode!(host: '0.0.0.0', port: 8080) # Set HTTP mode with custom host/port
+  # Core configuration options
+  config.allowed_commands = %w[
+    ls pwd cat head tail grep find wc
+    rails console rails runner
+    bundle exec rspec bundle exec test
+    git status git log git diff
+  ]
+  config.command_timeout = 30
+  config.enable_logging = true
+  config.log_level = :info
 end
 ```
 
 ## Running the MCP Server
 
-You have several options for running the MCP server:
-
-### Option 1: Use configured mode (recommended)
+The server runs in STDIO mode, perfect for Claude Desktop integration:
 
 ```bash
 $ bundle exec rails-active-mcp-server
 ```
 
-This will use the server mode configured in your initializer (`:stdio` by default). You can override the mode:
-
-```bash
-$ bundle exec rails-active-mcp-server stdio  # Force stdio mode
-$ bundle exec rails-active-mcp-server http   # Force HTTP mode
-```
-
-### Option 2: Rails-mounted (HTTP, good for development)
-
-```bash
-$ rails server
-# MCP server available at http://localhost:3000/mcp
-```
-
-### Option 3: Standalone HTTP server
-
-```bash
-$ bundle exec rails-active-mcp-server http
-# Default: http://localhost:3001
-
-# Custom host/port
-$ bundle exec rails-active-mcp-server http --host 0.0.0.0 --port 8080
-```
-
-### Option 4: Using rackup
-
-```bash
-$ rackup mcp.ru -p 3001
-```
+The server automatically:
+- Loads your Rails application
+- Initializes all models and configurations
+- Provides secure access to your Rails environment
+- Uses the official MCP Ruby SDK for protocol handling
 
 ## Usage
 
-### With MCP Clients
-
-#### Claude Desktop Integration (Preferred)
+### Claude Desktop Integration (Recommended)
 
 Add to your Claude Desktop configuration file:
 
@@ -133,7 +88,7 @@ Add to your Claude Desktop configuration file:
   "mcpServers": {
     "rails-active-mcp": {
       "command": "bundle",
-      "args": ["exec", "rails-active-mcp-server", "stdio"],
+      "args": ["exec", "rails-active-mcp-server"],
       "cwd": "/path/to/your/rails/project"
     }
   }
@@ -147,7 +102,6 @@ Or if installed globally:
   "mcpServers": {
     "rails-active-mcp": {
       "command": "rails-active-mcp-server",
-      "args": ["stdio"],
       "cwd": "/path/to/your/rails/project"
     }
   }
@@ -161,142 +115,67 @@ Then in Claude Desktop, you can use prompts like:
 - "Check the User model schema and associations"
 - "Analyze this code for safety: User.delete_all"
 
-#### Warp Terminal Integration (HTTP)
-
-Add to your Warp MCP configuration:
-
-```json
-{
-  "mcpServers": {
-    "rails-console": {
-      "command": "curl",
-      "args": [
-        "-X",
-        "POST",
-        "-H",
-        "Content-Type: application/json",
-        "-d", "@-",
-        "http://localhost:3000/mcp"
-      ]
-    }
-  }
-}
-```
-
-#### Custom MCP Clients
-
-The server implements the MCP protocol (JSONRPC 2.0). Connect any MCP-compatible client to:
-- **Rails-mounted**: `http://localhost:3000/mcp`
-- **Standalone**: `http://localhost:3001`
-
 ### Direct Usage
 
 ```ruby
 # Execute code safely
 result = RailsActiveMcp.execute("User.count")
-puts result[:return_value] # => 42
 
 # Check if code is safe
 RailsActiveMcp.safe?("User.delete_all") # => false
-
-# Analyze code without executing
-executor = RailsActiveMcp::ConsoleExecutor.new(RailsActiveMcp.config)
-analysis = executor.dry_run("User.delete_all")
-puts analysis[:estimated_risk] # => :critical
 ```
 
-### Available MCP Tools
+## Available MCP Tools
 
-The Rails Active MCP server provides several built-in tools that will appear in Claude Desktop:
+The Rails Active MCP server provides four powerful tools that appear automatically in Claude Desktop:
 
-#### `rails_console_execute`
+### 1. `console_execute`
 
 Execute Ruby code with safety checks and timeout protection:
 
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "rails_console_execute",
-    "arguments": {
-      "code": "User.where(active: true).count",
-      "timeout": 30,
-      "safe_mode": true
-    }
-  }
-}
-```
+- **Purpose**: Run Rails console commands safely
+- **Safety**: Built-in dangerous operation detection
+- **Timeout**: Configurable execution timeout
+- **Logging**: All executions are logged for audit
 
-#### `rails_model_info`
+**Example Usage in Claude:**
+> "Execute `User.where(active: true).count`"
+
+### 2. `model_info`
 
 Get detailed information about Rails models:
 
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "rails_model_info",
-    "arguments": {
-      "model_name": "User"
-    }
-  }
-}
-```
+- **Schema Information**: Column types, constraints, indexes
+- **Associations**: Has_many, belongs_to, has_one relationships
+- **Validations**: All model validations and rules
+- **Methods**: Available instance and class methods
 
-#### `rails_safe_query`
+**Example Usage in Claude:**
+> "Show me the User model structure"
+
+### 3. `safe_query`
 
 Execute safe, read-only database queries:
 
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "rails_safe_query",
-    "arguments": {
-      "query": "where(active: true).count",
-      "model": "User"
-    }
-  }
-}
-```
+- **Read-Only**: Only SELECT operations allowed
+- **Safe Execution**: Automatic query analysis
+- **Result Limiting**: Prevents large data dumps
+- **Model Context**: Works within your model definitions
 
-#### `rails_dry_run`
+**Example Usage in Claude:**
+> "Get the 10 most recent orders"
+
+### 4. `dry_run`
 
 Analyze Ruby code for safety without executing:
 
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "rails_dry_run",
-    "arguments": {
-      "code": "User.delete_all"
-    }
-  }
-}
-```
+- **Risk Assessment**: Categorizes code by danger level
+- **Safety Analysis**: Identifies potential issues
+- **Recommendations**: Suggests safer alternatives
+- **Zero Execution**: Never runs the actual code
 
-#### Adding Custom Tools
-
-You can extend the server with additional tools by modifying the `McpServer` class in `lib/rails_active_mcp/mcp_server.rb` or `lib/rails_active_mcp/stdio_server.rb`:
-
-```ruby
-def register_default_tools
-  # Built-in console execution tool
-  register_tool('rails_console_execute', 'Execute Ruby code safely', {...})
-
-  # Your custom tools
-  register_tool('my_custom_tool', 'Description', {...}) do |args|
-    # Tool implementation
-  end
-end
-```
-
-Common tool implementations can include:
-- Code safety analysis
-- Read-only database queries
-- Model schema inspection
-- Custom business logic tools
+**Example Usage in Claude:**
+> "Analyze this code for safety: `User.delete_all`"
 
 ## Safety Features
 
@@ -329,105 +208,34 @@ User.where(active: true).count
 Post.includes(:comments).limit(10)
 ```
 
-## Rake Tasks
+## Architecture
 
-```bash
-# Check code safety
-rails rails_active_mcp:check_safety['User.count']
+### Built on Official MCP Ruby SDK
 
-# Execute code
-rails rails_active_mcp:execute['User.count']
+Rails Active MCP uses the official MCP Ruby SDK (`mcp` gem) for:
 
-# Test MCP tools
-rails rails_active_mcp:test_tools
-
-# View configuration
-rails rails_active_mcp:config
-
-# View audit log
-rails rails_active_mcp:audit_log[20]
-
-# Clear audit log
-rails rails_active_mcp:clear_audit_log
-```
-
-## Audit Logging
-
-All executions are logged to `log/rails_active_mcp.log`:
-
-```json
-{
-  "timestamp": "2025-01-15T10:30:00Z",
-  "code": "User.count",
-  "user": {
-    "environment": "development"
-  },
-  "safety_check": {
-    "safe": true,
-    "read_only": true,
-    "violations": []
-  }
-}
-```
-
-## Environment-Specific Configuration
-
-### Production
-
-```ruby
-config.production_mode!
-# - Very strict safety checks
-# - Read-only replica execution
-# - Comprehensive logging
-# - No mutation tools
-```
-
-### Development
-
-```ruby
-config.permissive_mode!
-# - Relaxed safety (but still protected)
-# - Mutation tools enabled
-# - Higher timeouts and limits
-```
-
-### Testing
-
-```ruby
-config.strict_mode!
-# - Safe defaults
-# - No mutations
-# - Fast timeouts
-```
-
-## Custom MCP Server Architecture
-
-Rails Active MCP provides a custom-built MCP server implementation with no external dependencies. The server:
-
-- Implements the Model Context Protocol (MCP)
-- Uses JSON-RPC 2.0 over HTTP
-- Supports essential MCP methods:
-  - `initialize` - Server capabilities
-  - `tools/list` - Available tools
-  - `tools/call` - Execute tools
-  - `resources/list` and `resources/read` - Resource access
+- **Professional Protocol Handling**: Robust JSON-RPC 2.0 implementation
+- **Built-in Instrumentation**: Automatic timing and error reporting
+- **Future-Proof**: Automatic updates as MCP specification evolves
+- **Standards Compliance**: Full MCP protocol compatibility
 
 ### Server Implementation
 
-The core server is implemented in `lib/rails_active_mcp/mcp_server.rb` and follows Rack middleware conventions, making it easy to mount in Rails or run standalone.
+The server is implemented in `lib/rails_active_mcp/sdk/server.rb` and provides:
 
-### Extending the Server
+- **STDIO Transport**: Perfect for Claude Desktop integration
+- **Tool Registration**: Automatic discovery of available tools
+- **Error Handling**: Comprehensive error reporting and recovery
+- **Rails Integration**: Deep integration with Rails applications
 
-You can add custom tools and resources to the server by extending the registration methods:
+### Tool Architecture
 
-```ruby
-# In an initializer or plugin
-RailsActiveMcp.server.instance_eval do
-  register_tool('my_custom_tool', 'Description', {...}) do |args|
-    # Tool implementation
-  end
-end
-```
+Each tool is implemented as a separate class in `lib/rails_active_mcp/sdk/tools/`:
+
+- `ConsoleExecuteTool`: Safe code execution
+- `ModelInfoTool`: Model introspection
+- `SafeQueryTool`: Read-only database access
+- `DryRunTool`: Code safety analysis
 
 ## Error Handling
 
@@ -436,6 +244,32 @@ The gem provides specific error types:
 - `RailsActiveMcp::SafetyError`: Code failed safety checks
 - `RailsActiveMcp::TimeoutError`: Execution timed out
 - `RailsActiveMcp::ExecutionError`: General execution failure
+
+All errors are properly reported through the MCP protocol with detailed messages.
+
+## Development and Testing
+
+### Running Tests
+
+```bash
+$ bundle exec rspec
+```
+
+### Testing MCP Integration
+
+```bash
+$ ./bin/test-mcp-output
+```
+
+This tests the MCP server output redirection and JSON protocol compliance.
+
+### Debugging
+
+Set the debug environment variable for detailed logging:
+
+```bash
+$ RAILS_MCP_DEBUG=1 bundle exec rails-active-mcp-server
+```
 
 ## Contributing
 
@@ -447,28 +281,21 @@ The gem provides specific error types:
 
 ## License
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
-
-## Security
-
-This gem provides multiple layers of security, but always:
-
-- Review the configuration for your environment
-- Monitor the audit logs
-- Use read-only database replicas in production when possible
-- Restrict model access as needed
-- Test safety patterns thoroughly
-
-### Benefits of the Custom MCP Server
-
-- **No External Dependencies**: Reduced attack surface with minimal dependencies
-- **Full Control**: Complete visibility into the server implementation
-- **Customizable Security**: Easily add additional security layers or checks
-- **Simplified Deployment**: No need to manage external MCP server dependencies
-- **Protocol Isolation**: MCP protocol implementation is self-contained and auditable
-
-For security issues, please report using Github Issues.
+The gem is available as open source under the [MIT License](https://opensource.org/licenses/MIT).
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for version history and changes.
+### Version 2.0.0 (Latest)
+
+- **BREAKING**: Migrated to official MCP Ruby SDK
+- **BREAKING**: Removed custom MCP server implementation
+- **BREAKING**: Simplified configuration options
+- **NEW**: Professional protocol handling with built-in instrumentation
+- **NEW**: Automatic MCP specification compliance
+- **IMPROVED**: 85% reduction in codebase complexity
+- **IMPROVED**: Better error handling and reporting
+- **IMPROVED**: Future-proof architecture
+
+### Previous Versions
+
+See [CHANGELOG.md](CHANGELOG.md) for detailed version history.

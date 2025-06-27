@@ -79,10 +79,10 @@ Next Steps:
    > RailsActiveMcp.execute("User.count")
 
 Built-in Tools Available in Claude:
-- rails_console_execute: Execute Ruby code in Rails console with safety checks
-- rails_model_info: Get detailed information about Rails models
-- rails_safe_query: Execute safe read-only database queries
-- rails_dry_run: Analyze Ruby code for safety without execution
+- console_execute: Execute Ruby code in Rails console with safety checks
+- model_info: Get detailed information about Rails models
+- safe_query: Execute safe read-only database queries
+- dry_run: Analyze Ruby code for safety without execution
 
 Extend with custom tools by modifying the MCP server implementation.
 
