@@ -20,30 +20,24 @@ module RailsActiveMcp
           # This ensures the server runs within the Rails project context
 
           require 'bundler/setup'
-          require 'stringio'
 
           # Set Rails environment
           ENV['RAILS_ENV'] ||= 'development'
 
-          # Suppress Rails loading output for MCP JSON protocol
-          unless ENV['RAILS_MCP_DEBUG'] == '1'
-            original_stdout = $stdout
-            original_stderr = $stderr
-            $stdout = StringIO.new
-            $stderr = StringIO.new
-          end
-
-          # Load Rails application
+          # Load Rails application first
           require_relative '../config/environment'
 
-          # Restore output streams
-          unless ENV['RAILS_MCP_DEBUG'] == '1'
-            $stdout = original_stdout
-            $stderr = original_stderr
-          end
+          # Now start the MCP server using the SDK implementation
+          require 'rails_active_mcp/sdk/server'
 
-          # Now run the actual MCP server
-          load Gem.bin_path('rails_active_mcp', 'rails-active-mcp-server')
+          begin
+            server = RailsActiveMcp::SDK::Server.new
+            server.run
+          rescue StandardError => e
+            warn "Error starting Rails Active MCP server: \#{e.message}"
+            warn e.backtrace if ENV['RAILS_MCP_DEBUG'] == '1'
+            exit 1
+          end
         RUBY
 
         chmod 'bin/rails-active-mcp-server', 0o755
@@ -57,7 +51,6 @@ module RailsActiveMcp
 
           # Rails Active MCP Wrapper Script
           # Ensures correct Ruby environment for Claude Desktop execution
-          # Research-based solution for version manager compatibility
 
           # Fix Claude Desktop environment isolation issues
           export HOME="${HOME:-#{ENV['HOME']}}"
@@ -95,24 +88,6 @@ module RailsActiveMcp
         say 'Created environment wrapper at bin/rails-active-mcp-wrapper', :green
       end
 
-      def create_mcp_route
-        # Check if routes file exists and is writable
-        routes_file = 'config/routes.rb'
-        return unless File.exist?(routes_file)
-
-        # Read current routes to check for conflicts
-        routes_content = File.read(routes_file)
-
-        if routes_content.include?('/mcp')
-          say "Warning: Route '/mcp' already exists. Skipping route creation.", :yellow
-          say "Manual setup: Add 'mount RailsActiveMcp::Engine, at: \"/mcp\"' to your routes.rb", :yellow
-        else
-          # Use Engine mounting instead of direct server mounting
-          route "mount RailsActiveMcp::Engine, at: '/mcp'"
-          say "Added MCP route at '/mcp'. You can change this in config/routes.rb", :green
-        end
-      end
-
       def create_mcp_config
         template 'mcp.ru', 'mcp.ru'
       end
@@ -134,7 +109,6 @@ module RailsActiveMcp
         say '  "mcpServers": {', :cyan
         say '    "rails-active-mcp": {', :cyan
         say "      \"command\": \"#{Rails.root}/bin/rails-active-mcp-wrapper\",", :cyan
-        say '      "args": ["stdio"],', :cyan
         say "      \"cwd\": \"#{Rails.root}\",", :cyan
         say '      "env": {', :cyan
         say '        "RAILS_ENV": "development",', :cyan
@@ -144,6 +118,12 @@ module RailsActiveMcp
         say '  }', :cyan
         say '}', :cyan
         say '', :green
+        say "\nAvailable Tools in Claude Desktop:", :green
+        say '- console_execute: Execute Ruby code with safety checks', :yellow
+        say '- model_info: Get detailed information about Rails models', :yellow
+        say '- safe_query: Execute safe read-only database queries', :yellow
+        say '- dry_run: Analyze Ruby code for safety without execution', :yellow
+        say '', :green
         say "\nWhy use the wrapper?", :green
         say '- Handles Ruby version manager environments (asdf, rbenv, etc.)', :yellow
         say '- Prevents "bundler version" and "Ruby version" conflicts', :yellow
@@ -151,8 +131,8 @@ module RailsActiveMcp
         say "\nAlternative (if wrapper doesn't work):", :green
         say 'Use bin/rails-active-mcp-server instead of the wrapper', :yellow
         say "\nTesting:", :green
-        say '1. Test manually: bin/rails-active-mcp-wrapper stdio', :yellow
-        say '2. Should output JSON (not plain text)', :yellow
+        say '1. Test manually: bin/rails-active-mcp-wrapper', :yellow
+        say '2. Should output JSON responses (not plain text)', :yellow
         say '3. Restart Claude Desktop after config changes', :yellow
         say "\nTroubleshooting:", :green
         say '- Set RAILS_MCP_DEBUG=1 for verbose logging', :yellow
