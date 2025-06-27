@@ -1,0 +1,34 @@
+# Rails 7.1 Gemfile for CI testing
+source 'https://rubygems.org'
+
+# Specify the Rails version
+gem 'rails', '~> 7.1.0'
+
+# Include the main gemspec
+gemspec path: '../'
+
+# Rails 7.1 specific dependencies
+gem 'importmap-rails', '>= 1.0'
+gem 'sprockets-rails', '>= 3.4.0'
+gem 'stimulus-rails', '>= 1.0'
+gem 'turbo-rails', '>= 1.0'
+
+# Database adapters
+gem 'mysql2', '~> 0.5'
+gem 'pg', '~> 1.1'
+gem 'sqlite3', '~> 1.6'
+
+# Testing gems
+gem 'factory_bot_rails', '~> 6.0'
+gem 'faker', '~> 3.0'
+gem 'rspec-rails', '~> 6.0'
+
+# Development and debugging
+gem 'debug', '>= 1.0.0'
+gem 'web-console', '>= 4.0'
+
+group :development, :test do
+  gem 'rubocop'
+  gem 'rubocop-rails'
+  gem 'rubocop-rspec'
+end
