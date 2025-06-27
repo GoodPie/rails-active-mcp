@@ -40,11 +40,12 @@ Next Steps:
    {
      "mcpServers": {
        "rails-active-mcp": {
-         "command": "<%= Rails.root %>/bin/rails-active-mcp-server",
+         "command": "<%= Rails.root %>/bin/rails-active-mcp-wrapper",
          "args": ["stdio"],
-         "cwd": "<%= Rails.root %>",
+         "cwd": "<%= Rails.root %>", 
          "env": {
-           "RAILS_ENV": "development"
+           "RAILS_ENV": "development",
+           "HOME": "/Users/your-username"
          }
        }
      }
@@ -140,11 +141,47 @@ $ tail -f ~/Library/Logs/Claude/mcp*.log  # macOS
 $ tail -f ~/.config/claude-desktop/logs/*.log  # Linux
 
 Common issues:
-- Ensure your Rails environment loads properly in the project directory
-- Check that the gem is properly installed and configured  
-- Verify the Rails application starts without errors
-- Make sure the cwd path in Claude Desktop config is correct
-- Enable debug logging with RAILS_MCP_DEBUG=1 for detailed output
+
+1. Ruby Version Manager Conflicts (Most Common Issue):
+   If you see errors like "Could not find 'bundler' (X.X.X)" or "Your Ruby version is X.X.X, but your Gemfile specified Y.Y.Y":
+   
+   This happens because Claude Desktop uses system Ruby instead of your project's Ruby version.
+   
+   Solution A - Use the wrapper script (Recommended):
+   In claude_desktop_config.json, use:
+   "command": "<%= Rails.root %>/bin/rails-active-mcp-wrapper"
+   
+   Solution B - Create system symlink:
+   $ sudo ln -sf $(which ruby) /usr/local/bin/ruby
+   
+   Solution C - Use absolute Ruby path:
+   In claude_desktop_config.json, change "command" to your full Ruby path:
+   "command": "$(which ruby)"
+   "args": ["<%= Rails.root %>/bin/rails-active-mcp-server", "stdio"]
+
+2. Environment Variable Issues:
+   If you see "error loading config: $HOME is not defined":
+   
+   This happens because Claude Desktop doesn't inherit all environment variables.
+   
+   Solution: Add HOME to your env section in claude_desktop_config.json:
+   "env": {
+     "RAILS_ENV": "development",
+     "HOME": "/Users/your-username"
+   }
+
+3. General Environment Issues:
+   - Ensure your Rails environment loads properly in the project directory
+   - Check that the gem is properly installed and configured  
+   - Verify the Rails application starts without errors
+   - Make sure the cwd path in Claude Desktop config is correct
+
+4. Debug Steps:
+   - Test manually: $ ./bin/rails-active-mcp-wrapper stdio
+   - Should output JSON (not plain text)
+   - Enable debug logging with RAILS_MCP_DEBUG=1 for detailed output
+   - Check Claude logs: $ tail -f ~/Library/Logs/Claude/mcp*.log
+   - Test environment variables: $ echo $HOME (should show your home directory)
 
 For more information: https://github.com/goodpie/rails-active-mcp
 
