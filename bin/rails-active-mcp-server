@@ -31,55 +31,26 @@ require './config/environment' if File.exist?('config/environment.rb')
 require_relative '../lib/rails_active_mcp'
 
 # Check which implementation to use
-if RailsActiveMcp.config.use_mcp_sdk
-  # Use the new SDK implementation
-  require_relative '../lib/rails_active_mcp/sdk/server'
-  require_relative '../lib/rails_active_mcp/sdk/tools/console_execute_tool'
-  require_relative '../lib/rails_active_mcp/sdk/tools/model_info_tool'
-  require_relative '../lib/rails_active_mcp/sdk/tools/safe_query_tool'
-  require_relative '../lib/rails_active_mcp/sdk/tools/dry_run_tool'
 
-  begin
-    # Always use SDK implementation
-    Rails.application.eager_load! if defined?(Rails.application)
+# Use the new SDK implementation
+require_relative '../lib/rails_active_mcp/sdk/server'
+require_relative '../lib/rails_active_mcp/sdk/tools/console_execute_tool'
+require_relative '../lib/rails_active_mcp/sdk/tools/model_info_tool'
+require_relative '../lib/rails_active_mcp/sdk/tools/safe_query_tool'
+require_relative '../lib/rails_active_mcp/sdk/tools/dry_run_tool'
 
-    server = RailsActiveMcp::SDK::Server.new
-    server.run
-  rescue LoadError => e
-    warn "Error: MCP SDK not available - #{e.message}"
-    warn "Please ensure the 'mcp' gem is installed: gem install mcp"
-    exit 1
-  rescue StandardError => e
-    warn "Error starting server: #{e.message}"
-    warn e.backtrace
-    exit 1
-  end
-else
-  # Use the legacy implementation
-  require_relative '../lib/rails_active_mcp/stdio_server'
+begin
+  # Always use SDK implementation
+  Rails.application.eager_load! if defined?(Rails.application)
 
-  begin
-    case ARGV[0]
-    when 'stdio', nil
-      server = RailsActiveMcp::StdioServer.new
-      server.start
-    when 'http'
-      port = ARGV.include?('--port') ? ARGV[ARGV.index('--port') + 1].to_i : 3001
-      puts "Starting Rails Active MCP Server (Legacy) on HTTP port #{port}"
-      server = RailsActiveMcp::McpServer.new
-      server.run!(host: 'localhost', port: port)
-    else
-      puts 'Usage: rails-active-mcp-server [stdio|http] [--port PORT]'
-      puts '  stdio: For Claude Desktop integration (default)'
-      puts '  http:  For HTTP-based integrations'
-      exit(1)
-    end
-  rescue Interrupt
-    puts "\nShutting down Rails Active MCP Server..." if ENV['RAILS_MCP_DEBUG']
-    exit(0)
-  rescue StandardError => e
-    warn "Error starting server: #{e.message}"
-    warn e.backtrace.join("\n") if ENV['RAILS_MCP_DEBUG']
-    exit(1)
-  end
+  server = RailsActiveMcp::SDK::Server.new
+  server.run
+rescue LoadError => e
+  warn "Error: MCP SDK not available - #{e.message}"
+  warn "Please ensure the 'mcp' gem is installed: gem install mcp"
+  exit 1
+rescue StandardError => e
+  warn "Error starting server: #{e.message}"
+  warn e.backtrace
+  exit 1
 end
