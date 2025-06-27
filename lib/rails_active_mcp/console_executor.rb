@@ -5,9 +5,15 @@ require 'rails'
 
 module RailsActiveMcp
   class ConsoleExecutor
+    # Thread-safe execution errors
+    class ExecutionError < StandardError; end
+    class ThreadSafetyError < StandardError; end
+
     def initialize(config)
       @config = config
       @safety_checker = SafetyChecker.new(config)
+      # Thread-safe mutex for critical sections
+      @execution_mutex = Mutex.new
     end
 
     def execute(code, timeout: nil, safe_mode: nil, capture_output: true)
@@ -23,8 +29,8 @@ module RailsActiveMcp
       # Log execution if enabled
       log_execution(code) if @config.log_executions
 
-      # Execute with timeout and output capture
-      result = execute_with_timeout(code, timeout, capture_output)
+      # Execute with Rails 7.1 compatible thread safety
+      result = execute_with_rails_executor(code, timeout, capture_output)
 
       # Post-execution processing
       process_result(result)
@@ -39,7 +45,8 @@ module RailsActiveMcp
       # Validate method safety
       raise SafetyError, "Method '#{method}' is not allowed for safe queries" unless safe_query_method?(method)
 
-      begin
+      # Execute with proper Rails executor and connection management
+      execute_with_rails_executor_and_connection do
         model_class = model.to_s.constantize
 
         # Build and execute query
@@ -91,6 +98,87 @@ module RailsActiveMcp
 
     private
 
+    def execute_with_rails_executor(code, timeout, capture_output)
+      if defined?(Rails) && Rails.application
+        # Handle development mode reloading if needed
+        handle_development_reloading if Rails.env.development?
+
+        # Rails 7.1 compatible execution with proper dependency loading
+        if defined?(ActiveSupport::Dependencies) && ActiveSupport::Dependencies.respond_to?(:interlock)
+          ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
+            Rails.application.executor.wrap do
+              execute_with_connection_pool(code, timeout, capture_output)
+            end
+          end
+        else
+          # Fallback for older Rails versions
+          Rails.application.executor.wrap do
+            execute_with_connection_pool(code, timeout, capture_output)
+          end
+        end
+      else
+        # Non-Rails execution
+        execute_with_timeout(code, timeout, capture_output)
+      end
+    rescue TimeoutError => e
+      # Re-raise timeout errors as-is
+      raise e
+    rescue StandardError => e
+      raise ThreadSafetyError, "Thread-safe execution failed: #{e.message}"
+    end
+
+    # Manage ActiveRecord connection pool properly
+    def execute_with_connection_pool(code, timeout, capture_output)
+      if defined?(ActiveRecord::Base)
+        ActiveRecord::Base.connection_pool.with_connection do
+          execute_with_timeout(code, timeout, capture_output)
+        end
+      else
+        execute_with_timeout(code, timeout, capture_output)
+      end
+    ensure
+      # Clean up connections to prevent pool exhaustion
+      if defined?(ActiveRecord::Base)
+        ActiveRecord::Base.clear_active_connections!
+        # Probabilistic garbage collection for long-running processes
+        GC.start if rand(100) < 5
+      end
+    end
+
+    # Helper method for safe queries with proper Rails executor and connection management
+    def execute_with_rails_executor_and_connection(&block)
+      if defined?(Rails) && Rails.application
+        if defined?(ActiveSupport::Dependencies) && ActiveSupport::Dependencies.respond_to?(:interlock)
+          ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
+            Rails.application.executor.wrap do
+              if defined?(ActiveRecord::Base)
+                ActiveRecord::Base.connection_pool.with_connection(&block)
+              else
+                yield
+              end
+            end
+          end
+        else
+          Rails.application.executor.wrap do
+            if defined?(ActiveRecord::Base)
+              ActiveRecord::Base.connection_pool.with_connection(&block)
+            else
+              yield
+            end
+          end
+        end
+      else
+        yield
+      end
+    ensure
+      # Clean up connections
+      if defined?(ActiveRecord::Base)
+        ActiveRecord::Base.clear_active_connections!
+        # Probabilistic garbage collection for long-running processes
+        GC.start if rand(100) < 5
+      end
+    end
+
     def execute_with_timeout(code, timeout, capture_output)
       Timeout.timeout(timeout) do
         if capture_output
@@ -104,46 +192,52 @@ module RailsActiveMcp
     end
 
     def execute_with_captured_output(code)
-      # Capture both stdout and the return value
-      old_stdout = $stdout
-      captured_output = StringIO.new
-      $stdout = captured_output
+      # Thread-safe output capture using mutex
+      @execution_mutex.synchronize do
+        # Capture both stdout and the return value
+        old_stdout = $stdout
+        captured_output = StringIO.new
+        $stdout = captured_output
 
-      # Create execution context
-      binding_context = create_console_binding
+        begin
+          # Create thread-safe execution context
+          binding_context = create_thread_safe_console_binding
 
-      # Execute code
-      start_time = Time.now
-      return_value = binding_context.eval(code)
-      execution_time = Time.now - start_time
+          # Execute code
+          start_time = Time.now
+          return_value = binding_context.eval(code)
+          execution_time = Time.now - start_time
 
-      output = captured_output.string
-      $stdout = old_stdout
+          output = captured_output.string
 
-      {
-        success: true,
-        return_value: return_value,
-        output: output,
-        return_value_string: safe_inspect(return_value),
-        execution_time: execution_time,
-        code: code
-      }
-    rescue StandardError => e
-      $stdout = old_stdout if old_stdout
-      execution_time = Time.now - start_time if defined?(start_time)
+          {
+            success: true,
+            return_value: return_value,
+            output: output,
+            return_value_string: safe_inspect(return_value),
+            execution_time: execution_time,
+            code: code
+          }
+        rescue StandardError => e
+          execution_time = Time.now - start_time if defined?(start_time)
 
-      {
-        success: false,
-        error: e.message,
-        error_class: e.class.name,
-        backtrace: e.backtrace&.first(10),
-        execution_time: execution_time,
-        code: code
-      }
+          {
+            success: false,
+            error: e.message,
+            error_class: e.class.name,
+            backtrace: e.backtrace&.first(10),
+            execution_time: execution_time,
+            code: code
+          }
+        ensure
+          $stdout = old_stdout if old_stdout
+        end
+      end
     end
 
     def execute_direct(code)
-      binding_context = create_console_binding
+      # Create thread-safe binding context
+      binding_context = create_thread_safe_console_binding
       start_time = Time.now
 
       result = binding_context.eval(code)
@@ -178,40 +272,58 @@ module RailsActiveMcp
       end
     end
 
-    def create_console_binding
-      # Create a clean binding with Rails console helpers
+    # Thread-safe console binding creation
+    def create_thread_safe_console_binding
+      # Create a new binding context for each execution to avoid shared state
       console_context = Object.new
 
       console_context.instance_eval do
-        # Add Rails helpers if available
+        # Add Rails helpers if available (thread-safe)
         if defined?(Rails) && Rails.application
-          extend Rails.application.routes.url_helpers if Rails.application.routes
+          # Only extend if routes are available and it's safe to do so
+          extend Rails.application.routes.url_helpers if Rails.application.routes && !Rails.env.production?
 
           def reload!
-            Rails.application.reloader.reload!
-            'Reloaded!'
+            if defined?(Rails) && Rails.application && Rails.application.respond_to?(:reloader)
+              Rails.application.reloader.reload!
+              'Reloaded!'
+            else
+              'Reload not available'
+            end
           end
 
           def app
-            Rails.application
+            Rails.application if defined?(Rails)
           end
 
           def helper
-            ApplicationController.helpers if defined?(ApplicationController)
+            return unless defined?(ApplicationController) && ApplicationController.respond_to?(:helpers)
+
+            ApplicationController.helpers
           end
         end
 
-        # Add common console helpers
+        # Add common console helpers (thread-safe)
         def sql(query)
+          raise NoMethodError, 'ActiveRecord not available' unless defined?(ActiveRecord::Base)
+
           ActiveRecord::Base.connection.select_all(query).to_a
         end
 
         def schema(table_name)
+          raise NoMethodError, 'ActiveRecord not available' unless defined?(ActiveRecord::Base)
+
           ActiveRecord::Base.connection.columns(table_name)
         end
       end
 
       console_context.instance_eval { binding }
+    end
+
+    # Previous methods remain the same but are now called within thread-safe context
+    def create_console_binding
+      # Delegate to thread-safe version
+      create_thread_safe_console_binding
     end
 
     def safe_query_method?(method)
@@ -363,6 +475,18 @@ module RailsActiveMcp
       end
     rescue StandardError
       { unknown: true }
+    end
+
+    # Handle development mode reloading safely
+    def handle_development_reloading
+      return unless Rails.env.development?
+      return unless defined?(Rails.application.reloader)
+
+      # Check if reloading is needed and safe to do
+      Rails.application.reloader.reload! if Rails.application.reloader.check!
+    rescue StandardError => e
+      # Log but don't fail execution due to reloading issues
+      RailsActiveMcp.logger.warn "Failed to reload in development: #{e.message}" if defined?(RailsActiveMcp.logger)
     end
   end
 end
