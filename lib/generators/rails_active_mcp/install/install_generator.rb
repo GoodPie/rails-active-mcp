@@ -48,6 +48,32 @@ module RailsActiveMcp
 
         chmod 'bin/rails-active-mcp-server', 0o755
         say 'Created Rails binstub at bin/rails-active-mcp-server', :green
+
+        # Create environment-aware wrapper for Claude Desktop compatibility
+        create_file 'bin/rails-active-mcp-wrapper', <<~BASH
+          #!/usr/bin/env bash
+
+          # Rails Active MCP Wrapper Script
+          # Ensures correct Ruby environment for Claude Desktop execution
+
+          # Set up asdf environment if available
+          export ASDF_DIR="$HOME/.asdf"
+          if [ -f "$ASDF_DIR/asdf.sh" ]; then
+              source "$ASDF_DIR/asdf.sh"
+          fi
+
+          # Add asdf to PATH
+          export PATH="$HOME/.asdf/shims:$HOME/.asdf/bin:$PATH"
+
+          # Change to the Rails project directory to ensure correct context
+          cd "$(dirname "$0")/.."
+
+          # Use the project's Ruby version with proper bundler setup
+          exec ruby bin/rails-active-mcp-server "$@"
+        BASH
+
+        chmod 'bin/rails-active-mcp-wrapper', 0o755
+        say 'Created environment wrapper at bin/rails-active-mcp-wrapper', :green
       end
 
       def create_mcp_route
@@ -88,7 +114,7 @@ module RailsActiveMcp
         say '{', :cyan
         say '  "mcpServers": {', :cyan
         say '    "rails-active-mcp": {', :cyan
-        say "      \"command\": \"#{Rails.root}/bin/rails-active-mcp-server\",", :cyan
+        say "      \"command\": \"#{Rails.root}/bin/rails-active-mcp-wrapper\",", :cyan
         say '      "args": ["stdio"],', :cyan
         say "      \"cwd\": \"#{Rails.root}\",", :cyan
         say '      "env": { "RAILS_ENV": "development" }', :cyan
@@ -96,14 +122,19 @@ module RailsActiveMcp
         say '  }', :cyan
         say '}', :cyan
         say '', :green
+        say "\nWhy use the wrapper?", :green
+        say '- Handles Ruby version manager environments (asdf, rbenv, etc.)', :yellow
+        say '- Prevents "bundler version" and "Ruby version" conflicts', :yellow
+        say '- Works reliably across different development setups', :yellow
+        say "\nAlternative (if wrapper doesn't work):", :green
+        say 'Use bin/rails-active-mcp-server instead of the wrapper', :yellow
         say "\nTesting:", :green
-        say '1. Test manually: bin/rails-active-mcp-server stdio', :yellow
+        say '1. Test manually: bin/rails-active-mcp-wrapper stdio', :yellow
         say '2. Should output JSON (not plain text)', :yellow
         say '3. Restart Claude Desktop after config changes', :yellow
         say "\nTroubleshooting:", :green
-        say '- Use absolute paths to avoid version manager conflicts', :yellow
         say '- Set RAILS_MCP_DEBUG=1 for verbose logging', :yellow
-        say '- Check README.md for alternative configuration methods', :yellow
+        say '- Check README.md for more configuration options', :yellow
         say '=' * 50, :green
       end
 
