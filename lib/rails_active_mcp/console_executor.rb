@@ -194,10 +194,13 @@ module RailsActiveMcp
     def execute_with_captured_output(code)
       # Thread-safe output capture using mutex
       @execution_mutex.synchronize do
-        # Capture both stdout and the return value
+        # Capture both stdout and stderr to prevent any Rails output leakage
         old_stdout = $stdout
+        old_stderr = $stderr
         captured_output = StringIO.new
+        captured_errors = StringIO.new
         $stdout = captured_output
+        $stderr = captured_errors
 
         begin
           # Create thread-safe execution context
@@ -209,17 +212,22 @@ module RailsActiveMcp
           execution_time = Time.now - start_time
 
           output = captured_output.string
+          errors = captured_errors.string
+
+          # Combine output and errors for comprehensive result
+          combined_output = [output, errors].reject(&:empty?).join("\n")
 
           {
             success: true,
             return_value: return_value,
-            output: output,
+            output: combined_output,
             return_value_string: safe_inspect(return_value),
             execution_time: execution_time,
             code: code
           }
         rescue StandardError => e
           execution_time = Time.now - start_time if defined?(start_time)
+          errors = captured_errors.string
 
           {
             success: false,
@@ -227,10 +235,12 @@ module RailsActiveMcp
             error_class: e.class.name,
             backtrace: e.backtrace&.first(10),
             execution_time: execution_time,
-            code: code
+            code: code,
+            stderr: errors.empty? ? nil : errors
           }
         ensure
           $stdout = old_stdout if old_stdout
+          $stderr = old_stderr if old_stderr
         end
       end
     end

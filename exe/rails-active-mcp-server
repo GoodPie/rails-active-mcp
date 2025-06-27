@@ -31,16 +31,23 @@ end
 
 # Initialize Rails environment if available (from current working directory)
 rails_loaded = false
+rails_load_error = nil
 if File.exist?('config/environment.rb')
   begin
     require './config/environment'
     rails_loaded = true
+
+    # Log successful Rails loading
+    warn "[#{Time.now}] [RAILS-MCP] INFO: Rails environment loaded successfully" if should_redirect
   rescue StandardError => e
     # Rails loading failed, continue without it
+    rails_load_error = e
     # Log to stderr (which is already redirected if needed)
     warn "[#{Time.now}] [RAILS-MCP] WARNING: Failed to load Rails environment: #{e.message}"
     warn "[#{Time.now}] [RAILS-MCP] WARNING: #{e.backtrace.first(3).join("\n")}" if ENV['RAILS_MCP_DEBUG']
   end
+elsif should_redirect
+  warn "[#{Time.now}] [RAILS-MCP] INFO: No Rails environment found (config/environment.rb missing)"
 end
 
 # Restore stdout after Rails loading for stdio mode (stderr stays redirected)
@@ -58,7 +65,12 @@ if should_redirect
 end
 
 # Now load the gem
-require_relative '../lib/rails_active_mcp'
+begin
+  require_relative '../lib/rails_active_mcp'
+rescue LoadError => e
+  warn "[#{Time.now}] [RAILS-MCP] FATAL: Failed to load rails_active_mcp gem: #{e.message}"
+  exit(1)
+end
 
 # Parse command line options
 transport = ARGV[0] || 'stdio'
@@ -68,13 +80,31 @@ host = ARGV.include?('--host') ? ARGV[ARGV.index('--host') + 1] : 'localhost'
 case transport
 when 'stdio'
   # Stdio transport for Claude Desktop using MCP SDK
-  require_relative '../lib/rails_active_mcp/sdk/server'
-
   begin
+    require_relative '../lib/rails_active_mcp/sdk/server'
+
+    # Log startup information
+    if should_redirect
+      warn "[#{Time.now}] [RAILS-MCP] INFO: Starting Rails Active MCP Server v#{RailsActiveMcp::VERSION}"
+    end
+    warn "[#{Time.now}] [RAILS-MCP] INFO: Rails loaded: #{rails_loaded}" if should_redirect
+    if rails_load_error && should_redirect
+      warn "[#{Time.now}] [RAILS-MCP] WARNING: Rails load error: #{rails_load_error.class.name}: #{rails_load_error.message}"
+    end
+
     server = RailsActiveMcp::Sdk::Server.new
     server.run_stdio
   rescue Interrupt
+    warn "[#{Time.now}] [RAILS-MCP] INFO: Server interrupted by user" if should_redirect
     exit(0)
+  rescue LoadError => e
+    warn "[#{Time.now}] [RAILS-MCP] FATAL: MCP SDK not available: #{e.message}"
+    warn "[#{Time.now}] [RAILS-MCP] FATAL: Please install the MCP gem: gem install mcp"
+    exit(1)
+  rescue StandardError => e
+    warn "[#{Time.now}] [RAILS-MCP] FATAL: Server startup failed: #{e.message}"
+    warn "[#{Time.now}] [RAILS-MCP] FATAL: #{e.backtrace.join("\n")}" if ENV['RAILS_MCP_DEBUG']
+    exit(1)
   end
 
 when 'http'
@@ -84,15 +114,35 @@ when 'http'
   puts 'For more information, see the migration guide in the documentation.'
   exit(1)
 
+when '--help', '-h'
+  puts 'Rails Active MCP Server'
+  puts "Version: #{RailsActiveMcp::VERSION}"
+  puts ''
+  puts 'Usage: rails-active-mcp-server [stdio] [options]'
+  puts '  stdio: For MCP integration (default)'
+  puts ''
+  puts 'Options:'
+  puts '  --help, -h Show this help message'
+  puts ''
+  puts 'Environment variables:'
+  puts '  RAILS_MCP_DEBUG=1  Enable debug logging and disable output redirection'
+  puts ''
+  puts 'Examples:'
+  puts '  rails-active-mcp-server stdio                # Start in stdio mode'
+  puts '  RAILS_MCP_DEBUG=1 rails-active-mcp-server   # Start with debug logging'
+  puts ''
+  puts 'Note: HTTP transport was removed in v2.0.0. Use stdio mode for MCP integration.'
+  exit(0)
+
 else
   puts 'Usage: rails-active-mcp-server [stdio] [options]'
   puts '  stdio: For MCP integration (default)'
   puts ''
   puts 'Options:'
-  puts '  --help     Show this help message'
+  puts '  --help, -h Show this help message'
   puts ''
   puts 'Environment variables:'
-  puts '  RAILS_MCP_DEBUG=1  Enable debug logging'
+  puts '  RAILS_MCP_DEBUG=1  Enable debug logging and disable output redirection'
   puts ''
   puts 'Note: HTTP transport was removed in v2.0.0. Use stdio mode for MCP integration.'
   exit(1)
