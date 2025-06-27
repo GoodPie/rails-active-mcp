@@ -29,9 +29,8 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = '>= 3.0.0'
 
   spec.metadata = {
-    'allowed_push_host' => 'https://rubygems.org',
     'homepage_uri' => spec.homepage,
-    'source_code_uri' => spec.homepage,
+    'source_code_uri' => "#{spec.homepage}/tree/main",
     'changelog_uri' => "#{spec.homepage}/blob/main/changelog.md",
     'bug_tracker_uri' => "#{spec.homepage}/issues",
     'documentation_uri' => "#{spec.homepage}#readme",
@@ -77,10 +76,10 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'factory_bot_rails', '~> 6.0'
   spec.add_development_dependency 'faker', '~> 2.19'
   spec.add_development_dependency 'rspec', '~> 3.1'
-  spec.add_development_dependency 'rspec-rails'
+  spec.add_development_dependency 'rspec-rails', '~> 6.0'
   spec.add_development_dependency 'rubocop', '~> 1.77'
   spec.add_development_dependency 'rubocop-rails', '~> 2.32'
-  spec.add_development_dependency 'rubocop-rspec'
+  spec.add_development_dependency 'rubocop-rspec', '~> 3.0'
   spec.add_development_dependency 'sqlite3', '~> 2.7'
 
   # Post-install message to help users get started
