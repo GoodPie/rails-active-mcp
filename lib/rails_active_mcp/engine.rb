@@ -6,12 +6,12 @@ module RailsActiveMcp
 
     config.rails_active_mcp = ActiveSupport::OrderedOptions.new
 
-    # Ensure configuration is available very early (from Railtie)
+    # Ensure configuration is available very early
     initializer 'rails_active_mcp.early_configuration', before: :load_config_initializers do
       RailsActiveMcp.configure unless RailsActiveMcp.configuration
     end
 
-    # Configure logging - consolidated from Railtie with Rails 7.1 compatibility
+    # Configure logging with Rails 7.1+ compatibility
     initializer 'rails_active_mcp.logger', after: :initialize_logger, before: :set_clear_dependencies_hook do
       # Only set logger if Rails logger is available and responds to logging methods
       RailsActiveMcp.logger = if defined?(Rails.logger) && Rails.logger.respond_to?(:info)
@@ -25,7 +25,6 @@ module RailsActiveMcp
                                 end
                               else
                                 # Fallback to our own logger if Rails logger is not available
-                                # This should not happen in normal Rails apps but provides safety
                                 Logger.new(STDERR).tap do |logger|
                                   logger.level = Rails.env.production? ? Logger::WARN : Logger::INFO
                                   logger.formatter = proc do |severity, datetime, progname, msg|
@@ -45,22 +44,6 @@ module RailsActiveMcp
       g.helper false
     end
 
-    # Define routes for the engine
-    routes do
-      # Main MCP endpoint for HTTP clients
-      post '/', to: 'mcp#handle'
-      post '/messages', to: 'mcp#handle'
-
-      # SSE endpoint for better MCP client compatibility
-      get '/sse', to: 'mcp#sse'
-
-      # Health check endpoint
-      get '/health', to: 'mcp#health'
-
-      # Root redirect
-      root to: 'mcp#info'
-    end
-
     initializer 'rails_active_mcp.configure' do |app|
       # Load configuration from Rails config if present
       if app.config.respond_to?(:rails_active_mcp)
@@ -71,37 +54,29 @@ module RailsActiveMcp
         end
       end
 
-      # Set default audit file location
-      RailsActiveMcp.config.audit_file ||= Rails.root.join('log', 'rails_active_mcp.log')
-
       # Validate configuration
-      RailsActiveMcp.config.validate!
+      RailsActiveMcp.config.valid?
     end
 
-    # Add our tools directory to the load path
-    config.autoload_paths << root.join('lib', 'rails_active_mcp', 'tools')
+    # Add our SDK tools directory to the load path
+    config.autoload_paths << root.join('lib', 'rails_active_mcp', 'sdk', 'tools')
 
-    # Ensure our tools are eager loaded in production
-    config.eager_load_paths << root.join('lib', 'rails_active_mcp', 'tools')
+    # Ensure our SDK tools are eager loaded in production
+    config.eager_load_paths << root.join('lib', 'rails_active_mcp', 'sdk', 'tools')
 
-    # Add rake tasks (consolidated from Railtie)
+    # Add rake tasks
     rake_tasks do
       load 'rails_active_mcp/tasks.rake'
     end
 
-    # Add generators (consolidated from Railtie)
-    generators do
-      # Generators are auto-discovered from lib/generators following Rails conventions
-    end
-
-    # Console hook for easier access (consolidated from Railtie)
+    # Console hook for easier access
     console do
       # Add convenience methods to console
       Rails::ConsoleMethods.include(RailsActiveMcp::ConsoleMethods) if defined?(Rails::ConsoleMethods)
     end
   end
 
-  # Console convenience methods (moved from Railtie)
+  # Console convenience methods
   module ConsoleMethods
     def mcp_execute(code, **options)
       RailsActiveMcp.execute(code, **options)
