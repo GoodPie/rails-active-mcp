@@ -26,11 +26,11 @@ module RailsActiveMcp
         data = JSON.parse(body)
         response = handle_jsonrpc_request(data)
 
-        [200, {'Content-Type' => 'application/json'}, [response.to_json]]
+        [200, { 'Content-Type' => 'application/json' }, [response.to_json]]
       rescue JSON::ParserError
         error_response(400, 'Invalid JSON')
-      rescue => e
-        Rails.logger.error "MCP Server Error: #{e.message}" if defined?(Rails)
+      rescue StandardError => e
+        RailsActiveMcp.logger.error "MCP Server Error: #{e.message}"
         error_response(500, 'Internal Server Error')
       end
     end
@@ -54,7 +54,7 @@ module RailsActiveMcp
       when 'resources/read'
         handle_resources_read(data)
       else
-        jsonrpc_error(data['id'], -32601, 'Method not found')
+        jsonrpc_error(data['id'], -32_601, 'Method not found')
       end
     end
 
@@ -91,9 +91,7 @@ module RailsActiveMcp
         }
 
         # Add annotations if present
-        if tool[:annotations] && !tool[:annotations].empty?
-          tool_def[:annotations] = tool[:annotations]
-        end
+        tool_def[:annotations] = tool[:annotations] if tool[:annotations] && !tool[:annotations].empty?
 
         tool_def
       end
@@ -110,7 +108,7 @@ module RailsActiveMcp
       arguments = data.dig('params', 'arguments') || {}
 
       tool = @tools[tool_name]
-      return jsonrpc_error(data['id'], -32602, "Tool '#{tool_name}' not found") unless tool
+      return jsonrpc_error(data['id'], -32_602, "Tool '#{tool_name}' not found") unless tool
 
       begin
         result = tool[:handler].call(arguments)
@@ -119,8 +117,8 @@ module RailsActiveMcp
           id: data['id'],
           result: { content: [{ type: 'text', text: result.to_s }] }
         }
-      rescue => e
-        jsonrpc_error(data['id'], -32603, "Tool execution failed: #{e.message}")
+      rescue StandardError => e
+        jsonrpc_error(data['id'], -32_603, "Tool execution failed: #{e.message}")
       end
     end
 
@@ -207,7 +205,7 @@ module RailsActiveMcp
             query: { type: 'string', description: 'Safe query to execute' },
             model: { type: 'string', description: 'Model class name' }
           },
-          required: ['query', 'model']
+          required: %w[query model]
         },
         # Safe read-only query tool
         {
@@ -244,7 +242,7 @@ module RailsActiveMcp
     end
 
     def execute_console_code(args)
-      return "Rails Active MCP is disabled" unless RailsActiveMcp.config.enabled
+      return 'Rails Active MCP is disabled' unless RailsActiveMcp.config.enabled
 
       executor = RailsActiveMcp::ConsoleExecutor.new(RailsActiveMcp.config)
 
@@ -265,13 +263,13 @@ module RailsActiveMcp
         "Safety check failed: #{e.message}"
       rescue RailsActiveMcp::TimeoutError => e
         "Execution timed out: #{e.message}"
-      rescue => e
+      rescue StandardError => e
         "Execution failed: #{e.message}"
       end
     end
 
     def get_model_info(model_name)
-      return "Rails Active MCP is disabled" unless RailsActiveMcp.config.enabled
+      return 'Rails Active MCP is disabled' unless RailsActiveMcp.config.enabled
 
       begin
         model_class = model_name.constantize
@@ -285,20 +283,21 @@ module RailsActiveMcp
         info.join("\n")
       rescue NameError
         "Model '#{model_name}' not found"
-      rescue => e
+      rescue StandardError => e
         "Error getting model info: #{e.message}"
       end
     end
 
     def execute_safe_query(args)
-      return "Rails Active MCP is disabled" unless RailsActiveMcp.config.enabled
+      return 'Rails Active MCP is disabled' unless RailsActiveMcp.config.enabled
 
       begin
         model_class = args['model'].constantize
         return "#{args['model']} is not an ActiveRecord model" unless model_class < ActiveRecord::Base
 
         # Only allow safe read-only methods
-        safe_methods = %w[find find_by where select count sum average maximum minimum first last pluck ids exists? empty? any? many? include?]
+        safe_methods = %w[find find_by where select count sum average maximum minimum first last pluck ids exists?
+                          empty? any? many? include?]
         query_method = args['query'].split('.').first
 
         return "Unsafe query method: #{query_method}" unless safe_methods.include?(query_method)
@@ -307,13 +306,13 @@ module RailsActiveMcp
         result.to_s
       rescue NameError
         "Model '#{args['model']}' not found"
-      rescue => e
+      rescue StandardError => e
         "Error executing query: #{e.message}"
       end
     end
 
     def dry_run_analysis(code)
-      return "Rails Active MCP is disabled" unless RailsActiveMcp.config.enabled
+      return 'Rails Active MCP is disabled' unless RailsActiveMcp.config.enabled
 
       executor = RailsActiveMcp::ConsoleExecutor.new(RailsActiveMcp.config)
 
@@ -343,7 +342,7 @@ module RailsActiveMcp
         end
 
         output.join("\n")
-      rescue => e
+      rescue StandardError => e
         "Analysis failed: #{e.message}"
       end
     end
@@ -367,7 +366,7 @@ module RailsActiveMcp
     end
 
     def error_response(status, message)
-      [status, {'Content-Type' => 'application/json'}, 
+      [status, { 'Content-Type' => 'application/json' },
        [{ error: message }.to_json]]
     end
   end

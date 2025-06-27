@@ -47,11 +47,16 @@ module RailsActiveMcp
       @server ||= McpServer.new
     end
 
-    # Add logger accessor
+    # Logger accessor - configured by railtie or defaults to stdout
     attr_accessor :logger
 
     def logger
-      @logger ||= defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger ? Rails.logger : Logger.new(STDOUT)
+      @logger ||= Logger.new(STDOUT).tap do |logger|
+        logger.level = Logger::INFO
+        logger.formatter = proc do |severity, datetime, progname, msg|
+          "[#{datetime}] #{severity} -- RailsActiveMcp: #{msg}\n"
+        end
+      end
     end
   end
 end

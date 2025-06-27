@@ -316,8 +316,10 @@ module RailsActiveMcp
       end
 
       begin
-        # Try to load Rails environment if not already loaded
-        require_relative '../../../config/environment' if !defined?(Rails) && File.exist?('config/environment.rb')
+        # Check if Rails environment is available
+        unless defined?(Rails)
+          return 'Rails environment not loaded. Please ensure the MCP server is started from your Rails app directory.'
+        end
 
         model_class = model_name.constantize
         unless defined?(ActiveRecord) && model_class < ActiveRecord::Base
@@ -352,8 +354,10 @@ module RailsActiveMcp
       end
 
       begin
-        # Try to load Rails environment if not already loaded
-        require_relative '../../../config/environment' if !defined?(Rails) && File.exist?('config/environment.rb')
+        # Check if Rails environment is available
+        unless defined?(Rails)
+          return 'Rails environment not loaded. Please ensure the MCP server is started from your Rails app directory.'
+        end
 
         model_class = args['model'].constantize
         unless defined?(ActiveRecord) && model_class < ActiveRecord::Base

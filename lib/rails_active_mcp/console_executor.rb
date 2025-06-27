@@ -17,9 +17,7 @@ module RailsActiveMcp
       # Pre-execution safety check
       if safe_mode
         safety_analysis = @safety_checker.analyze(code)
-        unless safety_analysis[:safe]
-          raise SafetyError, "Code failed safety check: #{safety_analysis[:summary]}"
-        end
+        raise SafetyError, "Code failed safety check: #{safety_analysis[:summary]}" unless safety_analysis[:safe]
       end
 
       # Log execution if enabled
@@ -36,14 +34,10 @@ module RailsActiveMcp
       limit ||= @config.max_results
 
       # Validate model access
-      unless @config.model_allowed?(model)
-        raise SafetyError, "Access to model '#{model}' is not allowed"
-      end
+      raise SafetyError, "Access to model '#{model}' is not allowed" unless @config.model_allowed?(model)
 
       # Validate method safety
-      unless safe_query_method?(method)
-        raise SafetyError, "Method '#{method}' is not allowed for safe queries"
-      end
+      raise SafetyError, "Method '#{method}' is not allowed for safe queries" unless safe_query_method?(method)
 
       begin
         model_class = model.to_s.constantize
@@ -56,9 +50,7 @@ module RailsActiveMcp
                 end
 
         # Apply limit for enumerable results
-        if query.respond_to?(:limit) && !count_method?(method)
-          query = query.limit(limit)
-        end
+        query = query.limit(limit) if query.respond_to?(:limit) && !count_method?(method)
 
         result = execute_query_with_timeout(query)
 
@@ -71,7 +63,7 @@ module RailsActiveMcp
           count: calculate_count(result),
           executed_at: Time.now
         }
-      rescue => e
+      rescue StandardError => e
         log_error(e, { model: model, method: method, args: args })
         {
           success: false,
@@ -136,7 +128,7 @@ module RailsActiveMcp
         execution_time: execution_time,
         code: code
       }
-    rescue => e
+    rescue StandardError => e
       $stdout = old_stdout if old_stdout
       execution_time = Time.now - start_time if defined?(start_time)
 
@@ -163,7 +155,7 @@ module RailsActiveMcp
         execution_time: execution_time,
         code: code
       }
-    rescue => e
+    rescue StandardError => e
       execution_time = Time.now - start_time if defined?(start_time)
 
       {
@@ -197,7 +189,7 @@ module RailsActiveMcp
 
           def reload!
             Rails.application.reloader.reload!
-            "Reloaded!"
+            'Reloaded!'
           end
 
           def app
@@ -274,18 +266,16 @@ module RailsActiveMcp
 
     def safe_inspect(object)
       object.inspect
-    rescue => e
+    rescue StandardError => e
       "#<#{object.class}:0x#{object.object_id.to_s(16)} (inspect failed: #{e.message})>"
     end
 
     def process_result(result)
       # Apply max results limit to output
-      if result[:success] && result[:return_value].is_a?(Array)
-        if result[:return_value].size > @config.max_results
-          result[:return_value] = result[:return_value].first(@config.max_results)
-          result[:truncated] = true
-          result[:note] = "Result truncated to #{@config.max_results} items"
-        end
+      if result[:success] && result[:return_value].is_a?(Array) && (result[:return_value].size > @config.max_results)
+        result[:return_value] = result[:return_value].first(@config.max_results)
+        result[:truncated] = true
+        result[:note] = "Result truncated to #{@config.max_results} items"
       end
 
       result
@@ -310,16 +300,16 @@ module RailsActiveMcp
       recommendations = []
 
       if safety_analysis[:violations].any?
-        recommendations << "Consider using read-only alternatives"
-        recommendations << "Review the code for unintended side effects"
+        recommendations << 'Consider using read-only alternatives'
+        recommendations << 'Review the code for unintended side effects'
 
         if safety_analysis[:violations].any? { |v| v[:severity] == :critical }
-          recommendations << "This code contains critical safety violations and should not be executed"
+          recommendations << 'This code contains critical safety violations and should not be executed'
         end
       end
 
       unless safety_analysis[:read_only]
-        recommendations << "Consider using the safe_query tool for read-only operations"
+        recommendations << 'Consider using the safe_query tool for read-only operations'
       end
 
       recommendations
@@ -338,9 +328,9 @@ module RailsActiveMcp
       File.open(@config.audit_file, 'a') do |f|
         f.puts(JSON.generate(log_entry))
       end
-    rescue => e
+    rescue StandardError => e
       # Don't fail execution due to logging issues
-      Rails.logger.warn "Failed to log Rails Active MCP execution: #{e.message}" if defined?(Rails)
+      RailsActiveMcp.logger.warn "Failed to log Rails Active MCP execution: #{e.message}"
     end
 
     def log_error(error, context = {})
@@ -358,7 +348,7 @@ module RailsActiveMcp
       File.open(@config.audit_file, 'a') do |f|
         f.puts(JSON.generate(log_entry))
       end
-    rescue
+    rescue StandardError
       # Silently fail logging
     end
 
@@ -371,7 +361,7 @@ module RailsActiveMcp
       else
         { environment: Rails.env }
       end
-    rescue
+    rescue StandardError
       { unknown: true }
     end
   end

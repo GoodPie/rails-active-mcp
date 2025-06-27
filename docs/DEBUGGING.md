@@ -126,7 +126,7 @@ The logs show:
   "mcpServers": {
     "rails-active-mcp": {
       "command": "bundle",
-      "args": ["exec", "rails-active-mcp-server", "stdio"],
+      "args": ["exec", "rails-active-mcp-server"],
       "cwd": "/path/to/rails/project",
       "env": {
         "RAILS_ENV": "development",
@@ -137,7 +137,39 @@ The logs show:
 }
 ```
 
-### 3. Server Initialization Problems
+**Note**: The server will use the mode configured in your Rails initializer (`:stdio` by default). You can override this by adding the mode as an argument: `["exec", "rails-active-mcp-server", "stdio"]`
+
+### 3. Server Mode Configuration
+
+**Problem**: Want to change the default server mode.
+
+**Solution**: Configure server mode in your Rails initializer:
+
+```ruby
+# config/initializers/rails_active_mcp.rb
+RailsActiveMcp.configure do |config|
+  # For Claude Desktop (default)
+  config.server_mode = :stdio
+  
+  # For HTTP-based integrations
+  config.http_mode!(host: '0.0.0.0', port: 8080)
+  
+  # Or just set stdio mode
+  config.stdio_mode!
+end
+```
+
+**Command line override**:
+```bash
+# Use configured mode
+bundle exec rails-active-mcp-server
+
+# Force specific mode
+bundle exec rails-active-mcp-server stdio
+bundle exec rails-active-mcp-server http --port 8080
+```
+
+### 4. Server Initialization Problems
 
 **Common initialization issues:**
 
@@ -162,7 +194,7 @@ The logs show:
    chmod +x exe/rails-active-mcp-server
    ```
 
-### 4. Connection Problems
+### 5. Connection Problems
 
 **Problem**: Claude Desktop can't connect to server.
 

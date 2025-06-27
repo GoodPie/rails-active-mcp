@@ -33,19 +33,36 @@ when 'stdio'
   require_relative '../lib/rails_active_mcp/stdio_server'
 
   begin
+    # Redirect stderr to a log file to prevent interference with MCP JSON protocol
+    # This is essential because Claude Desktop parses stderr as JSON and any warnings/errors cause failures
+    if ENV['RAILS_MCP_DEBUG']
+      # In debug mode, keep stderr visible
+      stderr_target = STDERR
+    else
+      # In normal mode, redirect stderr to a log file
+      log_dir = File.join(Dir.pwd, 'log')
+      Dir.mkdir(log_dir) unless Dir.exist?(log_dir)
+      stderr_log = File.join(log_dir, 'rails_mcp_stderr.log')
+      stderr_target = File.open(stderr_log, 'a')
+    end
+
     # Initialize Rails environment if available (from current working directory)
     if File.exist?('config/environment.rb')
       # Suppress Rails output to avoid interfering with MCP JSON protocol
       original_stdout = $stdout
+      original_stderr = $stderr
       $stdout = StringIO.new
+      $stderr = stderr_target
 
       begin
         require './config/environment'
       rescue StandardError => e
-        # Log to stderr but don't fail - the server can work without Rails
-        warn "Warning: Could not load Rails environment: #{e.message}"
+        # Don't output to stderr as it interferes with MCP JSON protocol
+        # The server can work without Rails environment
       ensure
         $stdout = original_stdout
+        $stderr = original_stderr
+        stderr_target.close if stderr_target.is_a?(File)
       end
     end
 

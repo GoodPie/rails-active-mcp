@@ -5,7 +5,7 @@ require 'rails/generators'
 require 'generators/rails_active_mcp/install/install_generator'
 
 RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
-  include Rails::Generators::Testing::Behaviour
+  include Rails::Generators::Testing::Behavior
 
   # Set up the generator test environment
   before(:all) do
