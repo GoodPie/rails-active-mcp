@@ -4,35 +4,16 @@ require 'json'
 require 'rack'
 
 module RailsActiveMcp
-  class McpServer
+  # Base class for JSON-RPC MCP server implementations
+  class JsonRpcServer
     JSONRPC_VERSION = '2.0'
     MCP_VERSION = '2025-06-18'
 
-    def initialize(app = nil)
-      @app = app
+    def initialize
       @resources = {}
     end
 
-    def call(env)
-      request = Rack::Request.new(env)
-
-      return [405, {}, ['Method Not Allowed']] unless request.post?
-      return [400, {}, ['Invalid Content-Type']] unless json_request?(request)
-
-      begin
-        body = request.body.read
-        data = JSON.parse(body)
-        response = handle_jsonrpc_request(data)
-
-        [200, { 'Content-Type' => 'application/json' }, [response.to_json]]
-      rescue JSON::ParserError
-        error_response(400, 'Invalid JSON')
-      rescue StandardError => e
-        RailsActiveMcp.logger.error "MCP Server Error: #{e.message}"
-        error_response(500, 'Internal Server Error')
-      end
-    end
-
+    # Common JSON-RPC request handling
     def handle_jsonrpc_request(data)
       case data['method']
       when 'initialize'
@@ -104,11 +85,7 @@ module RailsActiveMcp
           result: { content: [{ type: 'text', text: result.to_s }] }
         }
       rescue StandardError => e
-        if e.message.include?('not found')
-          jsonrpc_error(data['id'], -32_602, "Tool '#{tool_name}' not found")
-        else
-          jsonrpc_error(data['id'], -32_603, "Tool execution failed: #{e.message}")
-        end
+        handle_tool_error(data['id'], tool_name, e)
       end
     end
 
@@ -134,8 +111,13 @@ module RailsActiveMcp
       @tool_registry ||= ToolRegistry.instance
     end
 
-    def json_request?(request)
-      request.content_type&.include?('application/json')
+    def handle_tool_error(id, tool_name, error)
+      if error.message.include?('not found')
+        jsonrpc_error(id, -32_602, "Tool '#{tool_name}' not found")
+      else
+        RailsActiveMcp.logger.error "Tool execution failed: #{error.message}"
+        jsonrpc_error(id, -32_603, "Tool execution failed: #{error.message}")
+      end
     end
 
     def jsonrpc_error(id, code, message)
@@ -147,6 +129,40 @@ module RailsActiveMcp
           message: message
         }
       }
+    end
+  end
+
+  # HTTP/Rack-based MCP server implementation
+  class McpServer < JsonRpcServer
+    def initialize(app = nil)
+      super()
+      @app = app
+    end
+
+    def call(env)
+      request = Rack::Request.new(env)
+
+      return [405, {}, ['Method Not Allowed']] unless request.post?
+      return [400, {}, ['Invalid Content-Type']] unless json_request?(request)
+
+      begin
+        body = request.body.read
+        data = JSON.parse(body)
+        response = handle_jsonrpc_request(data)
+
+        [200, { 'Content-Type' => 'application/json' }, [response.to_json]]
+      rescue JSON::ParserError
+        error_response(400, 'Invalid JSON')
+      rescue StandardError => e
+        RailsActiveMcp.logger.error "MCP Server Error: #{e.message}"
+        error_response(500, 'Internal Server Error')
+      end
+    end
+
+    private
+
+    def json_request?(request)
+      request.content_type&.include?('application/json')
     end
 
     def error_response(status, message)

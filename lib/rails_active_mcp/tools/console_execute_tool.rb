@@ -9,6 +9,13 @@ module RailsActiveMcp
       property :timeout, type: 'integer', description: 'Timeout in seconds (default: 30)', required: false
       property :capture_output, type: 'boolean', description: 'Capture console output (default: true)', required: false
 
+      # MCP annotations for this tool
+      annotation :title, 'Rails Console Executor'
+      annotation :readOnlyHint, false
+      annotation :destructiveHint, true
+      annotation :idempotentHint, false
+      annotation :openWorldHint, false
+
       def perform
         code = properties[:code]
         safe_mode = properties[:safe_mode]

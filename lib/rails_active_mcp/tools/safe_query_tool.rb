@@ -1,16 +1,23 @@
 module RailsActiveMcp
   module Tools
     class SafeQueryTool < ApplicationMCPTool
-      tool_name "safe_query"
-      description "Execute safe read-only database queries on Rails models"
+      tool_name 'safe_query'
+      description 'Execute safe read-only database queries on Rails models'
 
-      property :model, type: "string", description: 'Model class name (e.g., "User", "Product")', required: true
-      property :method, type: "string", description: 'Query method (find, where, count, etc.)', required: true
-      property :args, type: "array", description: 'Arguments for the query method', required: false
-      property :limit, type: "integer", description: 'Limit results (default: 100)', required: false
+      property :model, type: 'string', description: 'Model class name (e.g., "User", "Product")', required: true
+      property :method, type: 'string', description: 'Query method (find, where, count, etc.)', required: true
+      property :args, type: 'array', description: 'Arguments for the query method', required: false
+      property :limit, type: 'integer', description: 'Limit results (default: 100)', required: false
+
+      # MCP annotations for this tool
+      annotation :title, 'Safe Query Executor'
+      annotation :readOnlyHint, true
+      annotation :destructiveHint, false
+      annotation :idempotentHint, true
+      annotation :openWorldHint, false
 
       def perform
-        return render(error: "Rails Active MCP is disabled") unless RailsActiveMcp.config.enabled
+        return render(error: 'Rails Active MCP is disabled') unless RailsActiveMcp.config.enabled
 
         model = properties[:model]
         method = properties[:method]

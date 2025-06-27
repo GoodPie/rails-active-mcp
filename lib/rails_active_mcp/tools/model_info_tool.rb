@@ -1,16 +1,23 @@
 module RailsActiveMcp
   module Tools
     class ModelInfoTool < ApplicationMCPTool
-      tool_name "model_info"
-      description "Get information about Rails models including schema and associations"
+      tool_name 'model_info'
+      description 'Get information about Rails models including schema and associations'
 
-      property :model, type: "string", description: 'Model class name', required: true
-      property :include_schema, type: "boolean", description: 'Include database schema information', required: false
-      property :include_associations, type: "boolean", description: 'Include model associations', required: false
-      property :include_validations, type: "boolean", description: 'Include model validations', required: false
+      property :model, type: 'string', description: 'Model class name', required: true
+      property :include_schema, type: 'boolean', description: 'Include database schema information', required: false
+      property :include_associations, type: 'boolean', description: 'Include model associations', required: false
+      property :include_validations, type: 'boolean', description: 'Include model validations', required: false
+
+      # MCP annotations for this tool
+      annotation :title, 'Rails Model Inspector'
+      annotation :readOnlyHint, true
+      annotation :destructiveHint, false
+      annotation :idempotentHint, true
+      annotation :openWorldHint, false
 
       def perform
-        return render(error: "Rails Active MCP is disabled") unless RailsActiveMcp.config.enabled
+        return render(error: 'Rails Active MCP is disabled') unless RailsActiveMcp.config.enabled
 
         model = properties[:model]
         include_schema = properties.fetch(:include_schema, true)
@@ -61,7 +68,7 @@ module RailsActiveMcp
           render(text: output.join("\n"))
         rescue NameError
           render(error: ["Model '#{model}' not found"])
-        rescue => e
+        rescue StandardError => e
           render(error: ["Error analyzing model: #{e.message}"])
         end
       end

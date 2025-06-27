@@ -16,7 +16,7 @@ require_relative 'rails_active_mcp/tools/dry_run_tool'
 require_relative 'rails_active_mcp/tool_registry'
 require_relative 'rails_active_mcp/mcp_server'
 
-# Load Engine for Rails integration
+# Load Engine for Rails integration (consolidated from Railtie)
 require_relative 'rails_active_mcp/engine' if defined?(Rails)
 
 module RailsActiveMcp

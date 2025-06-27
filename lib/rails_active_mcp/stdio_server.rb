@@ -5,9 +5,9 @@ require 'io/console'
 require 'logger'
 
 module RailsActiveMcp
-  class StdioServer
+  class StdioServer < JsonRpcServer
     def initialize
-      @mcp_server = McpServer.new
+      super
       @running = false
 
       # Ensure all logging goes to stderr, never stdout
@@ -15,7 +15,7 @@ module RailsActiveMcp
       # Suppress any Rails application logging that might interfere with MCP protocol
       suppress_rails_logging
 
-      log_to_stderr "Rails Active MCP Server initialized with #{@mcp_server.tools.size} tools", level: :info
+      log_to_stderr 'Rails Active MCP Server initialized', level: :info
     end
 
     def start
@@ -87,7 +87,7 @@ module RailsActiveMcp
 
           # Capture any output that might leak during request processing
           response = capture_stdout_during_request do
-            @mcp_server.handle_jsonrpc_request(request)
+            handle_jsonrpc_request(request)
           end
 
           log_to_stderr "Sending response: #{response.to_json}", level: :debug
@@ -120,7 +120,7 @@ module RailsActiveMcp
 
     def send_notification(level, message)
       notification = {
-        jsonrpc: McpServer::JSONRPC_VERSION,
+        jsonrpc: JSONRPC_VERSION,
         method: 'notifications/message',
         params: {
           level: level,
@@ -134,14 +134,7 @@ module RailsActiveMcp
     end
 
     def send_error_response(id, code, message)
-      error_response = {
-        jsonrpc: McpServer::JSONRPC_VERSION,
-        id: id,
-        error: {
-          code: code,
-          message: message
-        }
-      }
+      error_response = jsonrpc_error(id, code, message)
 
       $stdout.puts error_response.to_json
       $stdout.flush

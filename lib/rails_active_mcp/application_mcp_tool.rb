@@ -61,49 +61,14 @@ module RailsActiveMcp
       end
 
       def annotations
-        @_annotations || default_annotations
+        @_annotations || {}
       end
 
       private
 
       def default_annotations
-        # Set reasonable defaults based on tool characteristics
-        case @tool_name
-        when 'console_execute'
-          {
-            title: 'Rails Console Executor',
-            readOnlyHint: false,
-            destructiveHint: true,
-            idempotentHint: false,
-            openWorldHint: false
-          }
-        when 'model_info'
-          {
-            title: 'Rails Model Inspector',
-            readOnlyHint: true,
-            destructiveHint: false,
-            idempotentHint: true,
-            openWorldHint: false
-          }
-        when 'safe_query'
-          {
-            title: 'Safe Query Executor',
-            readOnlyHint: true,
-            destructiveHint: false,
-            idempotentHint: true,
-            openWorldHint: false
-          }
-        when 'dry_run'
-          {
-            title: 'Code Safety Analyzer',
-            readOnlyHint: true,
-            destructiveHint: false,
-            idempotentHint: true,
-            openWorldHint: false
-          }
-        else
-          {}
-        end
+        # Default to empty annotations - let individual tools define their own
+        {}
       end
     end
 

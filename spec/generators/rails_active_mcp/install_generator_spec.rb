@@ -12,6 +12,9 @@ RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
     # Create a temporary Rails app structure
     @destination = File.expand_path('../../tmp/generated_app', __dir__)
     FileUtils.mkdir_p(@destination)
+  end
+
+  before do
     Rails.application = double('Rails::Application')
     allow(Rails.application).to receive(:routes).and_return(double('Routes', url_helpers: Module.new))
   end

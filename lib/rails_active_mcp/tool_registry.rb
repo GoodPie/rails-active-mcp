@@ -56,7 +56,27 @@ module RailsActiveMcp
     private
 
     def discover_tools
-      # Register all known ApplicationMCPTool subclasses
+      # Auto-discover all ApplicationMCPTool subclasses
+      if defined?(RailsActiveMcp::Tools)
+        RailsActiveMcp::Tools.constants.each do |const_name|
+          tool_class = RailsActiveMcp::Tools.const_get(const_name)
+          if tool_class.is_a?(Class) && tool_class < RailsActiveMcp::ApplicationMCPTool
+            register_application_mcp_tool(tool_class)
+          end
+        rescue NameError => e
+          # Skip constants that can't be loaded
+          RailsActiveMcp.logger.debug("Skipping tool constant #{const_name}: #{e.message}")
+        end
+      end
+
+      # Fallback to manual registration if auto-discovery finds no tools
+      return unless @tools.empty?
+
+      fallback_tool_registration
+    end
+
+    def fallback_tool_registration
+      # Fallback manual registration for edge cases
       tool_classes = [
         RailsActiveMcp::Tools::ConsoleExecuteTool,
         RailsActiveMcp::Tools::ModelInfoTool,
@@ -66,6 +86,8 @@ module RailsActiveMcp
 
       tool_classes.each do |tool_class|
         register_application_mcp_tool(tool_class)
+      rescue NameError => e
+        RailsActiveMcp.logger.warn("Failed to register tool #{tool_class}: #{e.message}")
       end
     end
 

@@ -1,13 +1,20 @@
 module RailsActiveMcp
   module Tools
     class DryRunTool < ApplicationMCPTool
-      tool_name "dry_run"
-      description "Analyze Ruby code for safety without executing it"
+      tool_name 'dry_run'
+      description 'Analyze Ruby code for safety without executing it'
 
-      property :code, type: "string", description: 'Ruby code to analyze for safety', required: true
+      property :code, type: 'string', description: 'Ruby code to analyze for safety', required: true
+
+      # MCP annotations for this tool
+      annotation :title, 'Code Safety Analyzer'
+      annotation :readOnlyHint, true
+      annotation :destructiveHint, false
+      annotation :idempotentHint, true
+      annotation :openWorldHint, false
 
       def perform
-        return render(error: "Rails Active MCP is disabled") unless RailsActiveMcp.config.enabled
+        return render(error: 'Rails Active MCP is disabled') unless RailsActiveMcp.config.enabled
 
         code = properties[:code]
         executor = RailsActiveMcp::ConsoleExecutor.new(RailsActiveMcp.config)
