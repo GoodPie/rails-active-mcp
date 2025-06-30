@@ -24,13 +24,13 @@ gem 'rails-active-mcp'
 And then execute:
 
 ```bash
-$ bundle install
+bundle install
 ```
 
 Run the installer:
 
 ```bash
-$ rails generate rails_active_mcp:install
+rails generate rails_active_mcp:install
 ```
 
 This will:
