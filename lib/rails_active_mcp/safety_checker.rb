@@ -89,12 +89,12 @@ module RailsActiveMcp
       # For simple Ruby code (no database patterns), allow if no dangerous violations
       if @config.safe_mode
         has_database_operations = code.match?(/\b(User|Model|ActiveRecord|\.where|\.find|\.create|\.update|\.delete)\b/)
-        if has_database_operations
-          safe = read_only && critical_violations.empty? && high_violations.empty?
-        else
-          # Simple Ruby code - just check for dangerous patterns
-          safe = critical_violations.empty? && high_violations.empty?
-        end
+        safe = if has_database_operations
+                 read_only && critical_violations.empty? && high_violations.empty?
+               else
+                 # Simple Ruby code - just check for dangerous patterns
+                 critical_violations.empty? && high_violations.empty?
+               end
       else
         # Not in safe mode - only block critical violations
         safe = critical_violations.empty?

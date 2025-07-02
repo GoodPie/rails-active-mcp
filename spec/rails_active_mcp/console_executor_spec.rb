@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# noinspection RubyResolve
 require 'spec_helper'
 
 RSpec.describe RailsActiveMcp::ConsoleExecutor do
@@ -266,14 +267,14 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
         # Mock ActiveRecord
         stub_const('::ActiveRecord::Base', double('ActiveRecord'))
         mock_pool = double('ConnectionPool')
-        allow(::ActiveRecord::Base).to receive(:connection_pool).and_return(mock_pool)
+        allow(ActiveRecord::Base).to receive(:connection_pool).and_return(mock_pool)
         allow(mock_pool).to receive(:with_connection).and_yield
-        allow(::ActiveRecord::Base).to receive(:clear_active_connections!)
+        allow(ActiveRecord::Base).to receive(:clear_active_connections!)
       end
 
       it 'manages connection pool properly' do
-        expect(::ActiveRecord::Base.connection_pool).to receive(:with_connection).and_yield
-        expect(::ActiveRecord::Base).to receive(:clear_active_connections!)
+        expect(ActiveRecord::Base.connection_pool).to receive(:with_connection).and_yield
+        expect(ActiveRecord::Base).to receive(:clear_active_connections!)
 
         result = executor.execute('2 + 2')
         expect(result[:success]).to be true

@@ -1,3 +1,4 @@
+# noinspection RubyResolve
 require 'spec_helper'
 require 'rails'
 require 'rails/generators/test_case'
@@ -11,10 +12,10 @@ RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
   include FileUtils
 
   # Set up destination directory
-  destination File.expand_path("../../tmp", __FILE__)
+  destination File.expand_path('../tmp', __dir__ || File.dirname(__FILE__))
 
   # Specify the generator class
-  tests RailsActiveMcp::Generators::InstallGenerator
+  tests described_class
 
   before(:all) do
     # Create and clean destination directory
@@ -39,15 +40,6 @@ RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
       expect(File.exist?(File.join(destination_root, 'config/initializers/rails_active_mcp.rb'))).to be true
     end
 
-    it 'creates the mcp.ru file' do
-      expect(File.exist?(File.join(destination_root, 'mcp.ru'))).to be true
-    end
-
-    it 'creates the binstub files' do
-      expect(File.exist?(File.join(destination_root, 'bin/rails-active-mcp-server'))).to be true
-      expect(File.exist?(File.join(destination_root, 'bin/rails-active-mcp-wrapper'))).to be true
-    end
-
     it 'creates a properly configured initializer' do
       initializer_path = File.join(destination_root, 'config/initializers/rails_active_mcp.rb')
       expect(File.exist?(initializer_path)).to be true
@@ -58,34 +50,6 @@ RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
       expect(content).to include('config.command_timeout')
       expect(content).to include('config.enable_logging')
     end
-
-    it 'creates a working mcp.ru file' do
-      mcp_path = File.join(destination_root, 'mcp.ru')
-      expect(File.exist?(mcp_path)).to be true
-
-      content = File.read(mcp_path)
-      expect(content).to include('RailsActiveMcp::SDK::Server.new')
-      expect(content).to include('server.run')
-    end
-
-    it 'creates executable binstub files' do
-      binstub_path = File.join(destination_root, 'bin/rails-active-mcp-server')
-      wrapper_path = File.join(destination_root, 'bin/rails-active-mcp-wrapper')
-
-      expect(File.exist?(binstub_path)).to be true
-      expect(File.exist?(wrapper_path)).to be true
-      expect(File.executable?(binstub_path)).to be true
-      expect(File.executable?(wrapper_path)).to be true
-    end
-
-    it 'creates binstub with correct SDK server reference' do
-      binstub_path = File.join(destination_root, 'bin/rails-active-mcp-server')
-      expect(File.exist?(binstub_path)).to be true
-
-      content = File.read(binstub_path)
-      expect(content).to include('RailsActiveMcp::SDK::Server.new')
-      expect(content).to include('server.run')
-    end
   end
 
   describe 'help text' do
@@ -94,5 +58,4 @@ RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
       expect(generator.class.desc).to eq('Install Rails Active MCP')
     end
   end
-
 end

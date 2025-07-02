@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# noinspection RubyResolve
 require 'spec_helper'
 
 RSpec.describe RailsActiveMcp::Configuration do
@@ -44,41 +45,41 @@ RSpec.describe RailsActiveMcp::Configuration do
   describe 'validation', :validation do
     it 'validates max_results must be positive' do
       config.max_results = 0
-      expect { config.validate! }.to raise_error(ArgumentError, /max_results must be positive/)
+      expect { config.validate? }.to raise_error(ArgumentError, /max_results must be positive/)
     end
 
     it 'validates max_results must be positive when negative' do
       config.max_results = -1
-      expect { config.validate! }.to raise_error(ArgumentError, /max_results must be positive/)
+      expect { config.validate? }.to raise_error(ArgumentError, /max_results must be positive/)
     end
 
     it 'validates command_timeout must be positive' do
       config.command_timeout = 0
-      expect { config.validate! }.to raise_error(ArgumentError, /command_timeout must be positive/)
+      expect { config.validate? }.to raise_error(ArgumentError, /command_timeout must be positive/)
     end
 
     it 'validates command_timeout must be positive when negative' do
       config.command_timeout = -1
-      expect { config.validate! }.to raise_error(ArgumentError, /command_timeout must be positive/)
+      expect { config.validate? }.to raise_error(ArgumentError, /command_timeout must be positive/)
     end
 
     it 'validates log_level must be a valid level' do
       config.log_level = :invalid
-      expect { config.validate! }.to raise_error(ArgumentError, /log_level must be one of/)
+      expect { config.validate? }.to raise_error(ArgumentError, /log_level must be one of/)
     end
 
     it 'validates safe_mode must be a boolean' do
       config.safe_mode = 'not_boolean'
-      expect { config.validate! }.to raise_error(ArgumentError, /safe_mode must be a boolean/)
+      expect { config.validate? }.to raise_error(ArgumentError, /safe_mode must be a boolean/)
     end
 
     it 'validates allowed_commands must be an array' do
       config.allowed_commands = 'not_array'
-      expect { config.validate! }.to raise_error(ArgumentError, /allowed_commands must be an array/)
+      expect { config.validate? }.to raise_error(ArgumentError, /allowed_commands must be an array/)
     end
 
     it 'passes validation with valid configuration' do
-      expect { config.validate! }.not_to raise_error
+      expect { config.validate? }.not_to raise_error
     end
   end
 
@@ -95,7 +96,7 @@ RSpec.describe RailsActiveMcp::Configuration do
     end
 
     it 'allows setting log_level to valid symbols' do
-      [:debug, :info, :warn, :error].each do |level|
+      %i[debug info warn error].each do |level|
         config.log_level = level
         expect(config.log_level).to eq(level)
       end
@@ -122,17 +123,17 @@ RSpec.describe RailsActiveMcp::Configuration do
 
     it 'rejects zero values for command_timeout' do
       config.command_timeout = 0
-      expect { config.validate! }.to raise_error(ArgumentError, /command_timeout must be positive/)
+      expect { config.validate? }.to raise_error(ArgumentError, /command_timeout must be positive/)
     end
 
     it 'rejects zero values for max_results' do
       config.max_results = 0
-      expect { config.validate! }.to raise_error(ArgumentError, /max_results must be positive/)
+      expect { config.validate? }.to raise_error(ArgumentError, /max_results must be positive/)
     end
 
     it 'rejects invalid symbols for log_level' do
       config.log_level = :invalid_level
-      expect { config.validate! }.to raise_error(ArgumentError, /log_level must be one of/)
+      expect { config.validate? }.to raise_error(ArgumentError, /log_level must be one of/)
     end
   end
 
@@ -200,15 +201,15 @@ RSpec.describe RailsActiveMcp::Configuration do
     it 'configuration remains valid after applying environment presets' do
       config.production_mode!
       expect(config.valid?).to be true
-      expect { config.validate! }.not_to raise_error
+      expect { config.validate? }.not_to raise_error
 
       config.development_mode!
       expect(config.valid?).to be true
-      expect { config.validate! }.not_to raise_error
+      expect { config.validate? }.not_to raise_error
 
       config.test_mode!
       expect(config.valid?).to be true
-      expect { config.validate! }.not_to raise_error
+      expect { config.validate? }.not_to raise_error
     end
   end
 
@@ -263,8 +264,14 @@ RSpec.describe RailsActiveMcp::Configuration do
       it 'does not respond to server_mode methods' do
         expect(config).not_to respond_to(:server_mode)
         expect(config).not_to respond_to(:server_mode=)
+      end
+
+      it 'does not respond to server host methods' do
         expect(config).not_to respond_to(:server_host)
         expect(config).not_to respond_to(:server_host=)
+      end
+
+      it 'does not respond to server port methods' do
         expect(config).not_to respond_to(:server_port)
         expect(config).not_to respond_to(:server_port=)
       end
@@ -295,14 +302,16 @@ RSpec.describe RailsActiveMcp::Configuration do
     end
 
     describe 'tool configuration compatibility' do
-      it 'provides model_allowed? method for SDK tools' do
+      it 'provides model_allowed? method for SDK tools when empty' do
         expect(config).to respond_to(:model_allowed?)
 
         # Test with empty allowed_models (should allow all)
         config.allowed_models = []
         expect(config.model_allowed?('User')).to be true
         expect(config.model_allowed?(:Post)).to be true
+      end
 
+      it 'provides model_allowed? methods for SDK tools when populated' do
         # Test with specific allowed models
         config.allowed_models = %w[User Post]
         expect(config.model_allowed?('User')).to be true
@@ -312,25 +321,24 @@ RSpec.describe RailsActiveMcp::Configuration do
 
       it 'provides validation methods for SDK integration' do
         expect(config).to respond_to(:valid?)
-        expect(config).to respond_to(:validate!)
+        expect(config).to respond_to(:validate?)
 
         # Should validate successfully with default configuration
         expect(config.valid?).to be true
-        expect { config.validate! }.not_to raise_error
+        expect { config.validate? }.not_to raise_error
       end
 
-      it 'provides environment configuration methods for SDK deployment' do
-        expect(config).to respond_to(:production_mode!)
-        expect(config).to respond_to(:development_mode!)
-        expect(config).to respond_to(:test_mode!)
-
-        # Environment methods should maintain SDK compatibility
+      it 'provides environment configuration methods for SDK deployment in production' do
         config.production_mode!
         expect(config.valid?).to be true
+      end
 
+      it 'provides environment configuration methods for SDK deployment in development' do
         config.development_mode!
         expect(config.valid?).to be true
+      end
 
+      it 'provides environment configuration methods for SDK deployment in test' do
         config.test_mode!
         expect(config.valid?).to be true
       end
@@ -351,7 +359,7 @@ RSpec.describe RailsActiveMcp::Configuration do
 
         # Configuration should be valid for SDK use
         expect(config.valid?).to be true
-        expect { config.validate! }.not_to raise_error
+        expect { config.validate? }.not_to raise_error
       end
 
       it 'ensures no legacy server configuration conflicts with SDK' do

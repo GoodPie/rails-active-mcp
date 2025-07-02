@@ -34,8 +34,9 @@ require 'rails'
 require 'active_support/all'
 
 # Configure Rails timezone for consistent test behavior
-Time.zone = 'UTC'
-Rails.application_class = Class.new(Rails::Application) unless defined?(Rails.application_class)
+Time.use_zone 'UTC' do
+  Rails.app_class = Class.new(Rails::Application) unless defined?(Rails.app_class)
+end
 
 # Require RSpec first, then spec_helper
 require 'rspec'
@@ -70,13 +71,12 @@ end
 
 # Set up basic database schema for testing
 ActiveRecord::Schema.define do
-  # Add any tables needed for testing here
-  # This is where you would define test tables if needed
+  # Not required yet
 end
 
 # Require migration files if they exist in the gem's generators
 migration_paths = [
-  File.expand_path('../lib/generators/rails_active_mcp/install/templates/db/migrate', __dir__)
+  File.expand_path('../lib/generators/rails_active_mcp/install/templates/db/migrate', __dir__ || File.dirname(__FILE__))
 ].select { |path| Dir.exist?(path) }
 
 migration_paths.each do |path|
@@ -86,8 +86,8 @@ end
 # Add additional requires for supporting files
 # Requires supporting ruby files with custom matchers and macros, etc,
 # in spec/support/ and its subdirectories.
-support_files = File.expand_path('support/**/*.rb', __dir__)
-Dir[support_files].sort.each { |f| require f }
+support_files = File.expand_path('support/**/*.rb', __dir__ || File.dirname(__FILE__))
+Dir[support_files].each { |f| require f }
 
 RSpec.configure do |config|
   # Configure DatabaseCleaner
@@ -96,20 +96,20 @@ RSpec.configure do |config|
     DatabaseCleaner.clean_with(:truncation)
   end
 
-  config.around(:each) do |example|
+  config.around do |example|
     DatabaseCleaner.cleaning do
       example.run
     end
   end
 
   # Configure WebMock
-  config.before(:each) do
+  config.before do
     WebMock.reset!
     WebMock.disable_net_connect!(allow_localhost: true)
   end
 
   # Configure Timecop
-  config.after(:each) do
+  config.after do
     Timecop.return
   end
 
@@ -120,7 +120,7 @@ RSpec.configure do |config|
   end
 
   # Reset RailsActiveMcp configuration before each test
-  config.before(:each) do
+  config.before do
     RailsActiveMcp.configuration = nil
   end
 end

@@ -1,3 +1,4 @@
+# noinspection RubyResolve
 require 'spec_helper'
 
 RSpec.describe 'RailsActiveMcp Integration' do
@@ -66,7 +67,7 @@ RSpec.describe 'RailsActiveMcp Integration' do
 
         expect(result[:success]).to be true
         expect(result[:return_value]).to eq(2)
-        expect(result[:output]).to eq("")
+        expect(result[:output]).to eq('')
       end
 
       it 'executes Rails model queries' do

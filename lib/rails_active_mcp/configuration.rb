@@ -51,30 +51,18 @@ module RailsActiveMcp
         [true, false].include?(enabled)
     end
 
-    def validate!
-      unless allowed_commands.is_a?(Array)
-        raise ArgumentError, 'allowed_commands must be an array'
-      end
+    def validate?
+      raise ArgumentError, 'allowed_commands must be an array' unless allowed_commands.is_a?(Array)
 
-      unless command_timeout.is_a?(Numeric) && command_timeout > 0
-        raise ArgumentError, 'command_timeout must be positive'
-      end
+      raise ArgumentError, 'command_timeout must be positive' unless command_timeout.is_a?(Numeric) && command_timeout > 0
 
-      unless %i[debug info warn error].include?(log_level)
-        raise ArgumentError, 'log_level must be one of: debug, info, warn, error'
-      end
+      raise ArgumentError, 'log_level must be one of: debug, info, warn, error' unless %i[debug info warn error].include?(log_level)
 
-      unless [true, false].include?(safe_mode)
-        raise ArgumentError, 'safe_mode must be a boolean'
-      end
+      raise ArgumentError, 'safe_mode must be a boolean' unless [true, false].include?(safe_mode)
 
-      unless max_results.is_a?(Numeric) && max_results > 0
-        raise ArgumentError, 'max_results must be positive'
-      end
+      raise ArgumentError, 'max_results must be positive' unless max_results.is_a?(Numeric) && max_results > 0
 
-      unless [true, false].include?(enabled)
-        raise ArgumentError, 'enabled must be a boolean'
-      end
+      raise ArgumentError, 'enabled must be a boolean' unless [true, false].include?(enabled)
 
       true
     end

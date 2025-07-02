@@ -23,9 +23,7 @@ module RailsActiveMcp
       # Pre-execution safety check
       if safe_mode
         safety_analysis = @safety_checker.analyze(code)
-        unless safety_analysis[:safe]
-          raise RailsActiveMcp::SafetyError, "Code failed safety check: #{safety_analysis[:summary]}"
-        end
+        raise RailsActiveMcp::SafetyError, "Code failed safety check: #{safety_analysis[:summary]}" unless safety_analysis[:safe]
       end
 
       # Log execution if enabled
@@ -50,14 +48,10 @@ module RailsActiveMcp
 
       begin
         # Validate model access
-        unless @config.model_allowed?(model)
-          raise RailsActiveMcp::SafetyError, "Access to model '#{model}' is not allowed"
-        end
+        raise RailsActiveMcp::SafetyError, "Access to model '#{model}' is not allowed" unless @config.model_allowed?(model)
 
         # Validate method safety
-        unless safe_query_method?(method)
-          raise RailsActiveMcp::SafetyError, "Method '#{method}' is not allowed for safe queries"
-        end
+        raise RailsActiveMcp::SafetyError, "Method '#{method}' is not allowed for safe queries" unless safe_query_method?(method)
 
         # Execute with proper Rails executor and connection management
         execute_with_rails_executor_and_connection do
@@ -137,16 +131,16 @@ module RailsActiveMcp
         end
 
         validators_info = if model_class.respond_to?(:validators)
-                           model_class.validators.map do |validator|
-                             {
-                               type: validator.class.name,
-                               attributes: validator.attributes,
-                               options: validator.options
-                             }
-                           end
-                         else
-                           []
-                         end
+                            model_class.validators.map do |validator|
+                              {
+                                type: validator.class.name,
+                                attributes: validator.attributes,
+                                options: validator.options
+                              }
+                            end
+                          else
+                            []
+                          end
 
         {
           success: true,
@@ -236,7 +230,7 @@ module RailsActiveMcp
 
     # Manage ActiveRecord connection pool properly
     def execute_with_connection_pool(code, timeout, capture_output)
-      if defined?(::ActiveRecord) && defined?(::ActiveRecord::Base)
+      if defined?(::ActiveRecord::Base)
         ::ActiveRecord::Base.connection_pool.with_connection do
           execute_with_timeout(code, timeout, capture_output)
         end
@@ -245,7 +239,7 @@ module RailsActiveMcp
       end
     ensure
       # Clean up connections to prevent pool exhaustion
-      if defined?(::ActiveRecord) && defined?(::ActiveRecord::Base)
+      if defined?(::ActiveRecord::Base)
         ::ActiveRecord::Base.clear_active_connections!
         # Probabilistic garbage collection for long-running processes
         GC.start if rand(100) < 5
@@ -258,7 +252,7 @@ module RailsActiveMcp
         if defined?(ActiveSupport::Dependencies) && ActiveSupport::Dependencies.respond_to?(:interlock)
           ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
             Rails.application.executor.wrap do
-              if defined?(::ActiveRecord) && defined?(::ActiveRecord::Base)
+              if defined?(::ActiveRecord::Base)
                 ::ActiveRecord::Base.connection_pool.with_connection(&block)
               else
                 yield
@@ -267,7 +261,7 @@ module RailsActiveMcp
           end
         else
           Rails.application.executor.wrap do
-            if defined?(::ActiveRecord) && defined?(::ActiveRecord::Base)
+            if defined?(::ActiveRecord::Base)
               ::ActiveRecord::Base.connection_pool.with_connection(&block)
             else
               yield
@@ -279,7 +273,7 @@ module RailsActiveMcp
       end
     ensure
       # Clean up connections
-      if defined?(::ActiveRecord) && defined?(::ActiveRecord::Base)
+      if defined?(::ActiveRecord::Base)
         ::ActiveRecord::Base.clear_active_connections!
         # Probabilistic garbage collection for long-running processes
         GC.start if rand(100) < 5
@@ -392,7 +386,7 @@ module RailsActiveMcp
 
     def execute_query_with_timeout(query)
       Timeout.timeout(@config.command_timeout) do
-        if defined?(::ActiveRecord) && defined?(::ActiveRecord::Relation) && query.is_a?(::ActiveRecord::Relation)
+        if defined?(::ActiveRecord::Relation) && query.is_a?(::ActiveRecord::Relation)
           query.to_a
         else
           query
@@ -484,9 +478,9 @@ module RailsActiveMcp
         result
       else
         # Handle ActiveRecord objects if available
-        if defined?(::ActiveRecord) && defined?(::ActiveRecord::Base) && result.is_a?(::ActiveRecord::Base)
+        if defined?(::ActiveRecord::Base) && result.is_a?(::ActiveRecord::Base)
           result.attributes.merge(_model_class: result.class.name)
-        elsif defined?(::ActiveRecord) && defined?(::ActiveRecord::Relation) && result.is_a?(::ActiveRecord::Relation)
+        elsif defined?(::ActiveRecord::Relation) && result.is_a?(::ActiveRecord::Relation)
           serialize_result(result.to_a)
         else
           safe_inspect(result)
@@ -502,7 +496,7 @@ module RailsActiveMcp
         1
       else
         # Handle ActiveRecord::Relation if available
-        if defined?(::ActiveRecord) && defined?(::ActiveRecord::Relation) && result.is_a?(::ActiveRecord::Relation)
+        if defined?(::ActiveRecord::Relation) && result.is_a?(::ActiveRecord::Relation)
           result.count
         else
           1
