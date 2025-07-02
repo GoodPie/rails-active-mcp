@@ -29,6 +29,14 @@ end
 # This file is copied to spec/ when you run 'rails generate rspec:install'
 ENV['RAILS_ENV'] ||= 'test'
 
+# Set up minimal Rails environment for timezone support
+require 'rails'
+require 'active_support/all'
+
+# Configure Rails timezone for consistent test behavior
+Time.zone = 'UTC'
+Rails.application_class = Class.new(Rails::Application) unless defined?(Rails.application_class)
+
 # Require RSpec first, then spec_helper
 require 'rspec'
 require_relative 'spec_helper'
@@ -56,7 +64,6 @@ RailsActiveMcp.configure do |config|
   config.log_level = :warn
   config.safe_mode = false # Disable safe mode for testing
   config.command_timeout = 10
-  config.default_timeout = 10
   config.max_results = 50
   config.log_executions = false
 end

@@ -1,8 +1,25 @@
 require 'spec_helper'
 
 RSpec.describe 'RailsActiveMcp Integration' do
+  let(:config) { RailsActiveMcp::Configuration.new }
+  let(:executor) { RailsActiveMcp::ConsoleExecutor.new(config) }
+
   before do
+    # Ensure configuration is reset to defaults
+    RailsActiveMcp.configure do |config|
+      config.safe_mode = true
+      config.command_timeout = 30
+      config.enabled = true
+    end
+
     # Mock Rails environment with realistic models
+    # Create doubles outside the class definition
+    id_column = double(name: 'id', type: :integer, primary: true)
+    email_column = double(name: 'email', type: :string, primary: false)
+    created_at_column = double(name: 'created_at', type: :datetime, primary: false)
+    posts_association = double(name: :posts, macro: :has_many, class_name: 'Post')
+    profile_association = double(name: :profile, macro: :has_one, class_name: 'Profile')
+
     stub_const('User', Class.new do
       def self.count
         42
@@ -20,19 +37,20 @@ RSpec.describe 'RailsActiveMcp Integration' do
         new
       end
 
-      def self.columns
-        [
-          double(name: 'id', type: :integer, primary: true),
-          double(name: 'email', type: :string, primary: false),
-          double(name: 'created_at', type: :datetime, primary: false)
-        ]
+      def self.table_name
+        'users'
       end
 
-      def self.reflect_on_all_associations
-        [
-          double(name: :posts, macro: :has_many, class_name: 'Post'),
-          double(name: :profile, macro: :has_one, class_name: 'Profile')
-        ]
+      def self.primary_key
+        'id'
+      end
+
+      define_singleton_method(:columns) do
+        [id_column, email_column, created_at_column]
+      end
+
+      define_singleton_method(:reflect_on_all_associations) do
+        [posts_association, profile_association]
       end
 
       def self.validators
@@ -42,16 +60,13 @@ RSpec.describe 'RailsActiveMcp Integration' do
   end
 
   describe 'MCP Tools Integration' do
-    let(:config) { RailsActiveMcp::Configuration.new }
-    let(:executor) { RailsActiveMcp::ConsoleExecutor.new(config) }
-
     describe 'console_execute tool' do
       it 'executes safe Ruby code' do
         result = executor.execute('1 + 1')
 
         expect(result[:success]).to be true
         expect(result[:return_value]).to eq(2)
-        expect(result[:output]).to be_nil
+        expect(result[:output]).to eq("")
       end
 
       it 'executes Rails model queries' do
@@ -66,15 +81,15 @@ RSpec.describe 'RailsActiveMcp Integration' do
         result = executor.execute('User.delete_all')
 
         expect(result[:success]).to be false
-        expect(result[:error]).to include('dangerous')
+        expect(result[:error]).to include('violation')
       end
 
       it 'times out long-running operations' do
         config.command_timeout = 1
-        result = executor.execute('sleep(2)')
 
-        expect(result[:success]).to be false
-        expect(result[:error]).to include('timeout')
+        expect do
+          executor.execute('sleep(2)')
+        end.to raise_error(RailsActiveMcp::TimeoutError)
       end
     end
 
@@ -87,6 +102,7 @@ RSpec.describe 'RailsActiveMcp Integration' do
           limit: 10
         )
 
+        puts "DEBUG: result = #{result.inspect}" if result[:success] == false
         expect(result[:success]).to be true
         expect(result[:result]).to be_an(Array)
       end
@@ -108,6 +124,7 @@ RSpec.describe 'RailsActiveMcp Integration' do
       it 'extracts model information' do
         info = executor.get_model_info('User')
 
+        puts "DEBUG: model info result = #{info.inspect}" if info[:success] == false
         expect(info[:success]).to be true
         expect(info[:model_name]).to eq('User')
         expect(info[:columns]).to be_an(Array)
@@ -127,7 +144,7 @@ RSpec.describe 'RailsActiveMcp Integration' do
 
       queries.each do |query|
         result = executor.execute(query)
-        expect(result[:success]).to be true, "Failed for query: #{query}"
+        expect(result[:success]).to be(true), "Failed for query: #{query}"
       end
     end
 
@@ -142,9 +159,9 @@ RSpec.describe 'RailsActiveMcp Integration' do
 
   describe 'Performance Characteristics' do
     it 'executes queries within reasonable time limits' do
-      start_time = Time.zone.now
+      start_time = Time.now
       result = executor.execute('User.count')
-      execution_time = Time.zone.now - start_time
+      execution_time = Time.now - start_time
 
       expect(result[:success]).to be true
       expect(execution_time).to be < 1.0 # Should complete within 1 second

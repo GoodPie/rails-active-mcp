@@ -7,83 +7,84 @@ require 'fileutils'
 
 RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
   include Rails::Generators::Testing::Behavior
+  include Rails::Generators::Testing::Assertions
+  include FileUtils
 
-  # Set up the generator test environment
+  # Set up destination directory
+  destination File.expand_path("../../tmp", __FILE__)
+
+  # Specify the generator class
+  tests RailsActiveMcp::Generators::InstallGenerator
+
   before(:all) do
-    # Create a temporary Rails app structure
-    @destination = File.expand_path('../../tmp/generated_app', __dir__)
-    FileUtils.mkdir_p(@destination)
-    FileUtils.mkdir_p(File.join(@destination, 'config'))
-    FileUtils.mkdir_p(File.join(@destination, 'config', 'initializers'))
-    FileUtils.mkdir_p(File.join(@destination, 'bin'))
+    # Create and clean destination directory
+    FileUtils.mkdir_p(destination_root)
   end
 
   before do
-    # Mock Rails application and root
-    Rails.application = double('Rails::Application')
-    allow(Rails.application).to receive(:routes).and_return(double('Routes', url_helpers: Module.new))
-    allow(Rails).to receive(:root).and_return(Pathname.new(@destination))
+    # Clean destination for each test
+    FileUtils.rm_rf(destination_root)
+    FileUtils.mkdir_p(destination_root)
 
-    # Create basic files that the generator expects
-    File.write(File.join(@destination, 'config', 'routes.rb'), "Rails.application.routes.draw do\nend\n")
-    FileUtils.rm_rf(Dir.glob(File.join(@destination, '*')))
-    FileUtils.mkdir_p(File.join(@destination, 'config'))
-    FileUtils.mkdir_p(File.join(@destination, 'config', 'initializers'))
-    FileUtils.mkdir_p(File.join(@destination, 'bin'))
-    File.write(File.join(@destination, 'config', 'routes.rb'), "Rails.application.routes.draw do\nend\n")
+    # Mock Rails.root for the generator
+    allow(Rails).to receive(:root).and_return(Pathname.new(destination_root))
   end
-
-  after(:all) do
-    # Clean up
-    FileUtils.rm_rf(@destination)
-  end
-
-  destination @destination
 
   describe 'generator execution' do
     before do
-      run_generator
+      run_generator []
     end
 
     it 'creates the initializer file' do
-      expect(file('config/initializers/rails_active_mcp.rb')).to exist
+      expect(File.exist?(File.join(destination_root, 'config/initializers/rails_active_mcp.rb'))).to be true
     end
 
     it 'creates the mcp.ru file' do
-      expect(file('mcp.ru')).to exist
+      expect(File.exist?(File.join(destination_root, 'mcp.ru'))).to be true
     end
 
     it 'creates the binstub files' do
-      expect(file('bin/rails-active-mcp-server')).to exist
-      expect(file('bin/rails-active-mcp-wrapper')).to exist
+      expect(File.exist?(File.join(destination_root, 'bin/rails-active-mcp-server'))).to be true
+      expect(File.exist?(File.join(destination_root, 'bin/rails-active-mcp-wrapper'))).to be true
     end
 
     it 'creates a properly configured initializer' do
-      initializer_content = file_content('config/initializers/rails_active_mcp.rb')
-      expect(initializer_content).to include('RailsActiveMcp.configure')
-      expect(initializer_content).to include('config.allowed_commands')
-      expect(initializer_content).to include('config.command_timeout')
-      expect(initializer_content).to include('config.enable_logging')
+      initializer_path = File.join(destination_root, 'config/initializers/rails_active_mcp.rb')
+      expect(File.exist?(initializer_path)).to be true
+
+      content = File.read(initializer_path)
+      expect(content).to include('RailsActiveMcp.configure')
+      expect(content).to include('config.allowed_commands')
+      expect(content).to include('config.command_timeout')
+      expect(content).to include('config.enable_logging')
     end
 
     it 'creates a working mcp.ru file' do
-      mcp_content = file_content('mcp.ru')
-      expect(mcp_content).to include('RailsActiveMcp::SDK::Server.new')
-      expect(mcp_content).to include('server.run')
+      mcp_path = File.join(destination_root, 'mcp.ru')
+      expect(File.exist?(mcp_path)).to be true
+
+      content = File.read(mcp_path)
+      expect(content).to include('RailsActiveMcp::SDK::Server.new')
+      expect(content).to include('server.run')
     end
 
     it 'creates executable binstub files' do
-      binstub_path = File.join(@destination, 'bin/rails-active-mcp-server')
-      wrapper_path = File.join(@destination, 'bin/rails-active-mcp-wrapper')
+      binstub_path = File.join(destination_root, 'bin/rails-active-mcp-server')
+      wrapper_path = File.join(destination_root, 'bin/rails-active-mcp-wrapper')
 
+      expect(File.exist?(binstub_path)).to be true
+      expect(File.exist?(wrapper_path)).to be true
       expect(File.executable?(binstub_path)).to be true
       expect(File.executable?(wrapper_path)).to be true
     end
 
     it 'creates binstub with correct SDK server reference' do
-      binstub_content = file_content('bin/rails-active-mcp-server')
-      expect(binstub_content).to include('RailsActiveMcp::SDK::Server.new')
-      expect(binstub_content).to include('server.run')
+      binstub_path = File.join(destination_root, 'bin/rails-active-mcp-server')
+      expect(File.exist?(binstub_path)).to be true
+
+      content = File.read(binstub_path)
+      expect(content).to include('RailsActiveMcp::SDK::Server.new')
+      expect(content).to include('server.run')
     end
   end
 
@@ -94,15 +95,4 @@ RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
     end
   end
 
-  private
-
-  def file(path)
-    full_path = File.join(@destination, path)
-    File.exist?(full_path) ? full_path : nil
-  end
-
-  def file_content(path)
-    full_path = File.join(@destination, path)
-    File.exist?(full_path) ? File.read(full_path) : nil
-  end
 end
