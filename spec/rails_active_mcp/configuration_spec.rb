@@ -173,24 +173,17 @@ RSpec.describe RailsActiveMcp::Configuration do
       end
     end
 
-    it 'environment presets override defaults' do
-      # Start with defaults
+    it 'initializes with correct default values' do
       expect(config.safe_mode).to be true
       expect(config.log_level).to eq(:info)
       expect(config.command_timeout).to eq(30)
       expect(config.max_results).to eq(100)
       expect(config.log_executions).to be false
+    end
 
-      # Apply development mode
-      config.development_mode!
-      expect(config.safe_mode).to be false
-      expect(config.log_level).to eq(:debug)
-      expect(config.command_timeout).to eq(60)
-      expect(config.max_results).to eq(200)
-      expect(config.log_executions).to be false
-
-      # Apply production mode
+    it 'applies production mode settings correctly' do
       config.production_mode!
+
       expect(config.safe_mode).to be true
       expect(config.log_level).to eq(:warn)
       expect(config.command_timeout).to eq(15)
@@ -198,19 +191,64 @@ RSpec.describe RailsActiveMcp::Configuration do
       expect(config.log_executions).to be true
     end
 
-    it 'configuration remains valid after applying environment presets' do
+    it 'applies development mode settings correctly' do
+      config.development_mode!
+
+      expect(config.safe_mode).to be false
+      expect(config.log_level).to eq(:debug)
+      expect(config.command_timeout).to eq(60)
+      expect(config.max_results).to eq(200)
+      expect(config.log_executions).to be false
+    end
+
+    it 'properly overrides settings when switching modes' do
+      # Start in development
+      config.development_mode!
+      expect(config.safe_mode).to be false
+
+      # Switch to production
+      config.production_mode!
+      expect(config.safe_mode).to be true
+      expect(config.log_level).to eq(:warn)
+    end
+
+    it 'development mode changes safe_mode from default' do
+      expect { config.development_mode! }
+        .to change(config, :safe_mode).from(true).to(false)
+    end
+
+    it 'production mode changes command_timeout from default' do
+      expect { config.production_mode! }
+        .to change(config, :command_timeout).from(30).to(15)
+    end
+
+    it 'configuration remains valid after applying production mode presets' do
       config.production_mode!
       expect(config.valid?).to be true
       expect { config.validate? }.not_to raise_error
-
-      config.development_mode!
-      expect(config.valid?).to be true
-      expect { config.validate? }.not_to raise_error
-
-      config.test_mode!
-      expect(config.valid?).to be true
-      expect { config.validate? }.not_to raise_error
     end
+  end
+
+  it 'does not retain previous mode settings' do
+    config.development_mode!
+    original_timeout = config.command_timeout
+
+    config.production_mode!
+
+    expect(config.command_timeout).not_to eq(original_timeout)
+    expect(config.command_timeout).to eq(15)
+  end
+
+  it 'configuration remains valid after applying development mode preset' do
+    config.development_mode!
+    expect(config.valid?).to be true
+    expect { config.validate? }.not_to raise_error
+  end
+
+  it 'configuration remains valid after applying test mode preset' do
+    config.test_mode!
+    expect(config.valid?).to be true
+    expect { config.validate? }.not_to raise_error
   end
 
   describe 'SDK integration', :sdk do
@@ -218,7 +256,7 @@ RSpec.describe RailsActiveMcp::Configuration do
       it 'provides safe_mode for safety checks' do
         expect(config).to respond_to(:safe_mode)
         expect(config).to respond_to(:safe_mode=)
-        expect([true, false]).to include(config.safe_mode)
+        expect(config.safe_mode).to be_in([true, false])
       end
 
       it 'provides command_timeout for execution limits' do
@@ -250,13 +288,19 @@ RSpec.describe RailsActiveMcp::Configuration do
       it 'provides log_level for SDK logging' do
         expect(config).to respond_to(:log_level)
         expect(config).to respond_to(:log_level=)
-        expect(%i[debug info warn error]).to include(config.log_level)
+        expect(config.log_level).to be_in(%i[debug info warn error])
       end
 
       it 'provides enable_logging for SDK integration' do
         expect(config).to respond_to(:enable_logging)
         expect(config).to respond_to(:enable_logging=)
-        expect([true, false]).to include(config.enable_logging)
+        # Set logging to true and check
+        config.enable_logging = true
+        expect(config.enable_logging).to be true
+
+        # Set logging to false and check
+        config.enable_logging = false
+        expect(config.enable_logging).to be false
       end
     end
 

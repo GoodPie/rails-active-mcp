@@ -4,9 +4,11 @@ require 'concurrent-ruby'
 require 'rails'
 
 module RailsActiveMcp
+  # rubocop:disable Metrics/ClassLength
   class ConsoleExecutor
     # Thread-safe execution errors
     class ExecutionError < StandardError; end
+
     class ThreadSafetyError < StandardError; end
 
     def initialize(config)
@@ -114,33 +116,11 @@ module RailsActiveMcp
         end
 
         # Extract model information
-        columns_info = model_class.columns.map do |column|
-          {
-            name: column.name,
-            type: column.type,
-            primary: column.name == model_class.primary_key
-          }
-        end
+        columns_info = build_model_columns(model_class)
 
-        associations_info = model_class.reflect_on_all_associations.map do |association|
-          {
-            name: association.name,
-            type: association.macro,
-            class_name: association.class_name
-          }
-        end
+        associations_info = build_model_reflections(model_class)
 
-        validators_info = if model_class.respond_to?(:validators)
-                            model_class.validators.map do |validator|
-                              {
-                                type: validator.class.name,
-                                attributes: validator.attributes,
-                                options: validator.options
-                              }
-                            end
-                          else
-                            []
-                          end
+        validators_info = build_model_validator_info(model_class)
 
         {
           success: true,
@@ -166,6 +146,40 @@ module RailsActiveMcp
           error_class: e.class.name,
           model_name: model_name
         }
+      end
+    end
+
+    def build_model_reflections(model_class)
+      model_class.reflect_on_all_associations.map do |association|
+        {
+          name: association.name,
+          type: association.macro,
+          class_name: association.class_name
+        }
+      end
+    end
+
+    def build_model_columns(model_class)
+      model_class.columns.map do |column|
+        {
+          name: column.name,
+          type: column.type,
+          primary: column.name == model_class.primary_key
+        }
+      end
+    end
+
+    def build_model_validator_info(model_class)
+      if model_class.respond_to?(:validators)
+        model_class.validators.map do |validator|
+          {
+            type: validator.class.name,
+            attributes: validator.attributes,
+            options: validator.options
+          }
+        end
+      else
+        []
       end
     end
 
@@ -238,12 +252,7 @@ module RailsActiveMcp
         execute_with_timeout(code, timeout, capture_output)
       end
     ensure
-      # Clean up connections to prevent pool exhaustion
-      if defined?(::ActiveRecord::Base)
-        ::ActiveRecord::Base.clear_active_connections!
-        # Probabilistic garbage collection for long-running processes
-        GC.start if rand(100) < 5
-      end
+      RailsActiveMcp::GarbageCollectionUtils.probalistic_clean!
     end
 
     # Helper method for safe queries with proper Rails executor and connection management
@@ -272,12 +281,7 @@ module RailsActiveMcp
         yield
       end
     ensure
-      # Clean up connections
-      if defined?(::ActiveRecord::Base)
-        ::ActiveRecord::Base.clear_active_connections!
-        # Probabilistic garbage collection for long-running processes
-        GC.start if rand(100) < 5
-      end
+      RailsActiveMcp::GarbageCollectionUtils.probalistic_clean!
     end
 
     def execute_with_timeout(code, timeout, capture_output)
@@ -321,31 +325,27 @@ module RailsActiveMcp
               output: nil
             }
           end
-          execution_time = Time.now - start_time
-
           output = captured_output.string
           errors = captured_errors.string
 
           # Combine output and errors for comprehensive result
           combined_output = [output, errors].reject(&:empty?).join("\n")
-
           {
             success: true,
             return_value: return_value,
             output: combined_output,
             return_value_string: safe_inspect(return_value),
-            execution_time: execution_time,
+            execution_time: Time.now - start_time,
             code: code
           }
         rescue StandardError => e
-          execution_time = Time.now - start_time if defined?(start_time)
+          execution_time = Time.now - start_time if start_time.present?
           errors = captured_errors.string
-
           {
             success: false,
-            error: e.message,
+            error: e&.message || 'Unknown error',
             error_class: e.class.name,
-            backtrace: e.backtrace&.first(10),
+            backtrace: e&.backtrace&.first(10) || [],
             execution_time: execution_time,
             code: code,
             stderr: errors.empty? ? nil : errors
@@ -372,7 +372,7 @@ module RailsActiveMcp
         code: code
       }
     rescue StandardError => e
-      execution_time = Time.now - start_time if defined?(start_time)
+      execution_time = Time.now - start_time if start_time.present?
 
       {
         success: false,
@@ -446,21 +446,6 @@ module RailsActiveMcp
     def create_console_binding
       # Delegate to thread-safe version
       create_thread_safe_console_binding
-    end
-
-    def safe_query_method?(method)
-      safe_methods = %w[
-        find find_by find_each find_in_batches
-        where all first last take
-        count sum average maximum minimum size length
-        pluck ids exists? empty? any? many?
-        select distinct group order limit offset
-        includes joins left_joins preload eager_load
-        to_a to_sql explain inspect as_json to_json
-        attributes attribute_names column_names
-        model_name table_name primary_key
-      ]
-      safe_methods.include?(method.to_s)
     end
 
     def count_method?(method)
@@ -615,4 +600,5 @@ module RailsActiveMcp
       RailsActiveMcp.logger.warn "Failed to reload in development: #{e.message}" if defined?(RailsActiveMcp.logger)
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end

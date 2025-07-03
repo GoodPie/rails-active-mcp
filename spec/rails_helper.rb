@@ -32,6 +32,8 @@ ENV['RAILS_ENV'] ||= 'test'
 # Set up minimal Rails environment for timezone support
 require 'rails'
 require 'active_support/all'
+require 'rails/generators'
+require 'rails/generators/base'
 
 # Configure Rails timezone for consistent test behavior
 Time.use_zone 'UTC' do

@@ -5,6 +5,7 @@ require_relative 'rails_active_mcp/version'
 require_relative 'rails_active_mcp/configuration'
 require_relative 'rails_active_mcp/safety_checker'
 require_relative 'rails_active_mcp/console_executor'
+require_relative 'rails_active_mcp/garbage_collection_utils'
 
 # Load SDK server
 require_relative 'rails_active_mcp/sdk/server'
