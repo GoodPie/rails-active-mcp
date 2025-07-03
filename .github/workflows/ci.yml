@@ -42,9 +42,13 @@ jobs:
 
       - name: Run RSpec tests
         run: bundle exec rspec --format progress --format RspecJunitFormatter --out tmp/rspec.xml
+        env:
+          RAILS_ENV: test
 
       - name: Run integration tests
         run: bin/test-mcp-output
+        env:
+          RAILS_ENV: test
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
