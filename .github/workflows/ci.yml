@@ -30,7 +30,7 @@ jobs:
 
       - name: Set up Rails ${{ matrix.rails-version }}
         run: |
-          bundle config set --local gemfile "/gemfiles/rails_${{ matrix.rails-version }}.gemfile"
+          bundle config set --local gemfile "gemfiles/rails_${{ matrix.rails-version }}.gemfile"
           bundle install
 
       - name: Setup test database
