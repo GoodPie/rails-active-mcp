@@ -32,6 +32,8 @@ jobs:
         run: |
           bundle config set --local gemfile "gemfiles/rails_${{ matrix.rails-version }}.gemfile"
           bundle install
+        env:
+          RAILS_ENV: test
 
       - name: Setup test database
         run: |
