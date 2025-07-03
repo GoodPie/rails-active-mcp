@@ -16,7 +16,6 @@ group :development, :test do
   gem 'sqlite3', '~> 2.7'
   gem 'timecop', '~> 0.9.8'
   gem 'webmock', '~> 3.19'
-  gem 'rspec'
 end
 
 group :development do
