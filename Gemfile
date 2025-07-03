@@ -23,10 +23,11 @@ group :development do
   gem 'rubocop', '~> 1.77'
   gem 'rubocop-rails', '~> 2.32'
   gem 'rubocop-rspec'
-  gem 'simplecov', '~> 0.22'
   gem 'yard'
 end
 
+group :development, :test do
+  gem 'simplecov', '~> 0.22'
 # For testing the gem in a Rails app
 gem 'sprockets-rails' # Required for Rails 7+
 
