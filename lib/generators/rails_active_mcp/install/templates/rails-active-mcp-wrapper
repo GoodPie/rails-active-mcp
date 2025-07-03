@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+
+# Rails Active MCP Wrapper Script
+# This script ensures Rails Active MCP works reliably across different Ruby version managers
+
+# Function to detect Ruby version manager
+detect_ruby_manager() {
+    if command -v asdf >/dev/null 2>&1 && [ -f .tool-versions ]; then
+        echo "asdf"
+    elif command -v rbenv >/dev/null 2>&1 && [ -f .ruby-version ]; then
+        echo "rbenv"
+    elif command -v rvm >/dev/null 2>&1 && [ -f .rvmrc ]; then
+        echo "rvm"
+    else
+        echo "system"
+    fi
+}
+
+# Function to setup environment for different Ruby managers
+setup_ruby_environment() {
+    local manager=$1
+
+    case $manager in
+        "asdf")
+            if [ -n "$ASDF_DIR" ] && [ -f "$ASDF_DIR/asdf.sh" ]; then
+                source "$ASDF_DIR/asdf.sh"
+            elif [ -f "$HOME/.asdf/asdf.sh" ]; then
+                export ASDF_DIR="$HOME/.asdf"
+                source "$HOME/.asdf/asdf.sh"
+            fi
+            ;;
+        "rbenv")
+            if [ -n "$RBENV_ROOT" ] && [ -f "$RBENV_ROOT/bin/rbenv" ]; then
+                export PATH="$RBENV_ROOT/bin:$PATH"
+                eval "$(rbenv init -)"
+            elif [ -f "$HOME/.rbenv/bin/rbenv" ]; then
+                export PATH="$HOME/.rbenv/bin:$PATH"
+                eval "$(rbenv init -)"
+            fi
+            ;;
+        "rvm")
+            if [ -f "$HOME/.rvm/scripts/rvm" ]; then
+                source "$HOME/.rvm/scripts/rvm"
+            fi
+            ;;
+    esac
+}
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Change to the Rails project directory
+cd "$PROJECT_ROOT" || {
+    echo "Error: Cannot change to project root directory: $PROJECT_ROOT" >&2
+    exit 1
+}
+
+# Detect and setup Ruby environment
+RUBY_MANAGER=$(detect_ruby_manager)
+setup_ruby_environment "$RUBY_MANAGER"
+
+# Verify we have the necessary files
+if [ ! -f "Gemfile" ]; then
+    echo "Error: Gemfile not found in $PROJECT_ROOT" >&2
+    echo "Please ensure you're running this from a Rails application root" >&2
+    exit 1
+fi
+
+if [ ! -f "config/environment.rb" ]; then
+    echo "Warning: config/environment.rb not found. This may not be a Rails application." >&2
+fi
+
+# Set default environment if not specified
+export RAILS_ENV="${RAILS_ENV:-development}"
+
+# Ensure we have the rails-active-mcp gem available
+if ! bundle list | grep -q "rails-active-mcp"; then
+    echo "Error: rails-active-mcp gem not found in bundle" >&2
+    echo "Please run: bundle install" >&2
+    exit 1
+fi
+
+# Execute the Rails Active MCP server
+# Try bundle exec first, then fall back to direct execution
+if bundle exec rails-active-mcp-server "$@" 2>/dev/null; then
+    exit 0
+elif command -v rails-active-mcp-server >/dev/null 2>&1; then
+    exec rails-active-mcp-server "$@"
+else
+    echo "Error: Cannot find rails-active-mcp-server executable" >&2
+    echo "Please ensure the rails-active-mcp gem is properly installed" >&2
+    exit 1
+fi

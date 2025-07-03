@@ -2,7 +2,7 @@
 
 # Generator testing support for Rails Active MCP
 # This module provides helper methods for testing Rails generators
-
+# rubocop:disable Metrics/ModuleLength
 module GeneratorTesting
   extend ActiveSupport::Concern
 
@@ -13,13 +13,13 @@ module GeneratorTesting
 
   # Helper method to prepare destination directory
   def prepare_generator_destination
-    FileUtils.rm_rf(generator_destination) if File.exist?(generator_destination)
+    FileUtils.rm_rf(generator_destination)
     FileUtils.mkdir_p(generator_destination)
   end
 
   # Helper method to clean up destination directory
   def cleanup_generator_destination
-    FileUtils.rm_rf(generator_destination) if File.exist?(generator_destination)
+    FileUtils.rm_rf(generator_destination)
   end
 
   # Helper method to create a Rails-like directory structure
@@ -132,7 +132,7 @@ module GeneratorTesting
     when Regexp
       expect(content).to match(expected_content)
     when Hash
-      expected_content.each do |key, value|
+      expected_content.each_value do |value|
         case value
         when String
           expect(content).to include(value)
@@ -153,3 +153,4 @@ RSpec.configure do |config|
     cleanup_generator_destination if respond_to?(:cleanup_generator_destination)
   end
 end
+# rubocop:enable Metrics/ModuleLength
