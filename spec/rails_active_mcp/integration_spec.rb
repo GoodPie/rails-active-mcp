@@ -103,7 +103,7 @@ RSpec.describe 'RailsActiveMcp Integration' do
           limit: 10
         )
 
-        puts "DEBUG: result = #{result.inspect}" if result[:success] == false
+        RSpec.configuration.reporter.message("DEBUG: result = #{result.inspect}") if result[:success] == false
         expect(result[:success]).to be true
         expect(result[:result]).to be_an(Array)
       end
