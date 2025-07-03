@@ -1,11 +1,11 @@
-# frozen_string_literal: true
-
+# Rails 6.0 Gemfile for CI testing
 source 'https://rubygems.org'
 
-# Specify your gem's dependencies in rails-active-mcp.gemspec
-gemspec
+# Specify the Rails version
+gem 'rails', '~> 6.0'
 
-gem 'rails', '>= 7.0'
+# Include the main gemspec
+gemspec path: '../'
 
 group :development, :test do
   gem 'byebug'
@@ -23,11 +23,10 @@ group :development do
   gem 'rubocop', '~> 1.77'
   gem 'rubocop-rails', '~> 2.32'
   gem 'rubocop-rspec'
+  gem 'simplecov', '~> 0.22'
   gem 'yard'
 end
 
-group :development, :test do
-  gem 'simplecov', '~> 0.22'
 # For testing the gem in a Rails app
 gem 'sprockets-rails' # Required for Rails 7+
 

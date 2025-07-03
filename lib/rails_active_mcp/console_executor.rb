@@ -4,9 +4,11 @@ require 'concurrent-ruby'
 require 'rails'
 
 module RailsActiveMcp
+  # rubocop:disable Metrics/ClassLength
   class ConsoleExecutor
     # Thread-safe execution errors
     class ExecutionError < StandardError; end
+
     class ThreadSafetyError < StandardError; end
 
     def initialize(config)
@@ -17,13 +19,13 @@ module RailsActiveMcp
     end
 
     def execute(code, timeout: nil, safe_mode: nil, capture_output: true)
-      timeout ||= @config.default_timeout
+      timeout ||= @config.command_timeout
       safe_mode = @config.safe_mode if safe_mode.nil?
 
       # Pre-execution safety check
       if safe_mode
         safety_analysis = @safety_checker.analyze(code)
-        raise SafetyError, "Code failed safety check: #{safety_analysis[:summary]}" unless safety_analysis[:safe]
+        raise RailsActiveMcp::SafetyError, "Code failed safety check: #{safety_analysis[:summary]}" unless safety_analysis[:safe]
       end
 
       # Log execution if enabled
@@ -34,41 +36,59 @@ module RailsActiveMcp
 
       # Post-execution processing
       process_result(result)
+    rescue RailsActiveMcp::SafetyError => e
+      {
+        success: false,
+        error: e.message,
+        error_class: 'SafetyError',
+        code: code
+      }
     end
 
     def execute_safe_query(model:, method:, args: [], limit: nil)
       limit ||= @config.max_results
 
-      # Validate model access
-      raise SafetyError, "Access to model '#{model}' is not allowed" unless @config.model_allowed?(model)
+      begin
+        # Validate model access
+        raise RailsActiveMcp::SafetyError, "Access to model '#{model}' is not allowed" unless @config.model_allowed?(model)
 
-      # Validate method safety
-      raise SafetyError, "Method '#{method}' is not allowed for safe queries" unless safe_query_method?(method)
+        # Validate method safety
+        raise RailsActiveMcp::SafetyError, "Method '#{method}' is not allowed for safe queries" unless safe_query_method?(method)
 
-      # Execute with proper Rails executor and connection management
-      execute_with_rails_executor_and_connection do
-        model_class = model.to_s.constantize
+        # Execute with proper Rails executor and connection management
+        execute_with_rails_executor_and_connection do
+          model_class = model.to_s.constantize
 
-        # Build and execute query
-        query = if args.empty?
-                  model_class.public_send(method)
-                else
-                  model_class.public_send(method, *args)
-                end
+          # Build and execute query
+          query = if args.empty?
+                    model_class.public_send(method)
+                  else
+                    model_class.public_send(method, *args)
+                  end
 
-        # Apply limit for enumerable results
-        query = query.limit(limit) if query.respond_to?(:limit) && !count_method?(method)
+          # Apply limit for enumerable results
+          query = query.limit(limit) if query.respond_to?(:limit) && !count_method?(method)
 
-        result = execute_query_with_timeout(query)
+          result = execute_query_with_timeout(query)
 
+          {
+            success: true,
+            model: model,
+            method: method,
+            args: args,
+            result: serialize_result(result),
+            count: calculate_count(result),
+            executed_at: Time.now
+          }
+        end
+      rescue RailsActiveMcp::SafetyError => e
         {
-          success: true,
+          success: false,
+          error: e.message,
+          error_class: 'SafetyError',
           model: model,
           method: method,
-          args: args,
-          result: serialize_result(result),
-          count: calculate_count(result),
-          executed_at: Time.zone.now
+          args: args
         }
       rescue StandardError => e
         log_error(e, { model: model, method: method, args: args })
@@ -80,6 +100,86 @@ module RailsActiveMcp
           method: method,
           args: args
         }
+      end
+    end
+
+    def get_model_info(model_name)
+      # Validate model access
+      raise RailsActiveMcp::SafetyError, "Access to model '#{model_name}' is not allowed" unless @config.model_allowed?(model_name)
+
+      begin
+        model_class = model_name.to_s.constantize
+
+        # Ensure it's an ActiveRecord model
+        unless model_class.respond_to?(:columns) && model_class.respond_to?(:reflect_on_all_associations)
+          raise RailsActiveMcp::SafetyError, "#{model_name} is not a valid ActiveRecord model"
+        end
+
+        # Extract model information
+        columns_info = build_model_columns(model_class)
+
+        associations_info = build_model_reflections(model_class)
+
+        validators_info = build_model_validator_info(model_class)
+
+        {
+          success: true,
+          model_name: model_name,
+          table_name: model_class.table_name,
+          primary_key: model_class.primary_key,
+          columns: columns_info,
+          associations: associations_info,
+          validators: validators_info,
+          extracted_at: Time.now
+        }
+      rescue NameError => e
+        {
+          success: false,
+          error: "Model '#{model_name}' not found: #{e.message}",
+          error_class: 'NameError',
+          model_name: model_name
+        }
+      rescue StandardError => e
+        {
+          success: false,
+          error: e.message,
+          error_class: e.class.name,
+          model_name: model_name
+        }
+      end
+    end
+
+    def build_model_reflections(model_class)
+      model_class.reflect_on_all_associations.map do |association|
+        {
+          name: association.name,
+          type: association.macro,
+          class_name: association.class_name
+        }
+      end
+    end
+
+    def build_model_columns(model_class)
+      model_class.columns.map do |column|
+        {
+          name: column.name,
+          type: column.type,
+          primary: column.name == model_class.primary_key
+        }
+      end
+    end
+
+    def build_model_validator_info(model_class)
+      if model_class.respond_to?(:validators)
+        model_class.validators.map do |validator|
+          {
+            type: validator.class.name,
+            attributes: validator.attributes,
+            options: validator.options
+          }
+        end
+      else
+        []
       end
     end
 
@@ -97,6 +197,21 @@ module RailsActiveMcp
     end
 
     private
+
+    def safe_query_method?(method)
+      # Define safe read-only methods for database queries
+      safe_methods = %w[
+        find find_by find_by! first last
+        where select limit offset order
+        count size length exists? empty?
+        pluck ids maximum minimum average sum
+        group having joins includes
+        readonly distinct unscope
+        all none
+      ]
+
+      safe_methods.include?(method.to_s)
+    end
 
     def execute_with_rails_executor(code, timeout, capture_output)
       if defined?(Rails) && Rails.application
@@ -129,20 +244,15 @@ module RailsActiveMcp
 
     # Manage ActiveRecord connection pool properly
     def execute_with_connection_pool(code, timeout, capture_output)
-      if defined?(ActiveRecord::Base)
-        ActiveRecord::Base.connection_pool.with_connection do
+      if defined?(::ActiveRecord::Base)
+        ::ActiveRecord::Base.connection_pool.with_connection do
           execute_with_timeout(code, timeout, capture_output)
         end
       else
         execute_with_timeout(code, timeout, capture_output)
       end
     ensure
-      # Clean up connections to prevent pool exhaustion
-      if defined?(ActiveRecord::Base)
-        ActiveRecord::Base.clear_active_connections!
-        # Probabilistic garbage collection for long-running processes
-        GC.start if rand(100) < 5
-      end
+      RailsActiveMcp::GarbageCollectionUtils.probalistic_clean!
     end
 
     # Helper method for safe queries with proper Rails executor and connection management
@@ -151,8 +261,8 @@ module RailsActiveMcp
         if defined?(ActiveSupport::Dependencies) && ActiveSupport::Dependencies.respond_to?(:interlock)
           ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
             Rails.application.executor.wrap do
-              if defined?(ActiveRecord::Base)
-                ActiveRecord::Base.connection_pool.with_connection(&block)
+              if defined?(::ActiveRecord::Base)
+                ::ActiveRecord::Base.connection_pool.with_connection(&block)
               else
                 yield
               end
@@ -160,8 +270,8 @@ module RailsActiveMcp
           end
         else
           Rails.application.executor.wrap do
-            if defined?(ActiveRecord::Base)
-              ActiveRecord::Base.connection_pool.with_connection(&block)
+            if defined?(::ActiveRecord::Base)
+              ::ActiveRecord::Base.connection_pool.with_connection(&block)
             else
               yield
             end
@@ -171,12 +281,7 @@ module RailsActiveMcp
         yield
       end
     ensure
-      # Clean up connections
-      if defined?(ActiveRecord::Base)
-        ActiveRecord::Base.clear_active_connections!
-        # Probabilistic garbage collection for long-running processes
-        GC.start if rand(100) < 5
-      end
+      RailsActiveMcp::GarbageCollectionUtils.probalistic_clean!
     end
 
     def execute_with_timeout(code, timeout, capture_output)
@@ -207,33 +312,40 @@ module RailsActiveMcp
           binding_context = create_thread_safe_console_binding
 
           # Execute code
-          start_time = Time.zone.now
-          return_value = binding_context.eval(code)
-          execution_time = Time.zone.now - start_time
-
+          start_time = Time.now
+          begin
+            return_value = binding_context.eval(code)
+          rescue SyntaxError => e
+            return {
+              success: false,
+              error: "Syntax Error: #{e.message}",
+              error_class: 'SyntaxError',
+              backtrace: e.backtrace&.first(10),
+              code: code,
+              output: nil
+            }
+          end
           output = captured_output.string
           errors = captured_errors.string
 
           # Combine output and errors for comprehensive result
           combined_output = [output, errors].reject(&:empty?).join("\n")
-
           {
             success: true,
             return_value: return_value,
             output: combined_output,
             return_value_string: safe_inspect(return_value),
-            execution_time: execution_time,
+            execution_time: Time.now - start_time,
             code: code
           }
         rescue StandardError => e
-          execution_time = Time.zone.now - start_time if defined?(start_time)
+          execution_time = Time.now - start_time if start_time.present?
           errors = captured_errors.string
-
           {
             success: false,
-            error: e.message,
+            error: e&.message || 'Unknown error',
             error_class: e.class.name,
-            backtrace: e.backtrace&.first(10),
+            backtrace: e&.backtrace&.first(10) || [],
             execution_time: execution_time,
             code: code,
             stderr: errors.empty? ? nil : errors
@@ -248,10 +360,10 @@ module RailsActiveMcp
     def execute_direct(code)
       # Create thread-safe binding context
       binding_context = create_thread_safe_console_binding
-      start_time = Time.zone.now
+      start_time = Time.now
 
       result = binding_context.eval(code)
-      execution_time = Time.zone.now - start_time
+      execution_time = Time.now - start_time
 
       {
         success: true,
@@ -260,7 +372,7 @@ module RailsActiveMcp
         code: code
       }
     rescue StandardError => e
-      execution_time = Time.zone.now - start_time if defined?(start_time)
+      execution_time = Time.now - start_time if start_time.present?
 
       {
         success: false,
@@ -273,8 +385,8 @@ module RailsActiveMcp
     end
 
     def execute_query_with_timeout(query)
-      Timeout.timeout(@config.default_timeout) do
-        if query.is_a?(ActiveRecord::Relation)
+      Timeout.timeout(@config.command_timeout) do
+        if defined?(::ActiveRecord::Relation) && query.is_a?(::ActiveRecord::Relation)
           query.to_a
         else
           query
@@ -315,15 +427,15 @@ module RailsActiveMcp
 
         # Add common console helpers (thread-safe)
         def sql(query)
-          raise NoMethodError, 'ActiveRecord not available' unless defined?(ActiveRecord::Base)
+          raise NoMethodError, 'ActiveRecord not available' unless defined?(::ActiveRecord::Base)
 
-          ActiveRecord::Base.connection.select_all(query).to_a
+          ::ActiveRecord::Base.connection.select_all(query).to_a
         end
 
         def schema(table_name)
-          raise NoMethodError, 'ActiveRecord not available' unless defined?(ActiveRecord::Base)
+          raise NoMethodError, 'ActiveRecord not available' unless defined?(::ActiveRecord::Base)
 
-          ActiveRecord::Base.connection.columns(table_name)
+          ::ActiveRecord::Base.connection.columns(table_name)
         end
       end
 
@@ -336,40 +448,28 @@ module RailsActiveMcp
       create_thread_safe_console_binding
     end
 
-    def safe_query_method?(method)
-      safe_methods = %w[
-        find find_by find_each find_in_batches
-        where all first last take
-        count sum average maximum minimum size length
-        pluck ids exists? empty? any? many?
-        select distinct group order limit offset
-        includes joins left_joins preload eager_load
-        to_a to_sql explain inspect as_json to_json
-        attributes attribute_names column_names
-        model_name table_name primary_key
-      ]
-      safe_methods.include?(method.to_s)
-    end
-
     def count_method?(method)
       %w[count sum average maximum minimum size length].include?(method.to_s)
     end
 
     def serialize_result(result)
       case result
-      when ActiveRecord::Base
-        result.attributes.merge(_model_class: result.class.name)
       when Array
         limited_result = result.first(@config.max_results)
         limited_result.map { |item| serialize_result(item) }
-      when ActiveRecord::Relation
-        serialize_result(result.to_a)
       when Hash
         result
       when Numeric, String, TrueClass, FalseClass, NilClass
         result
       else
-        safe_inspect(result)
+        # Handle ActiveRecord objects if available
+        if defined?(::ActiveRecord::Base) && result.is_a?(::ActiveRecord::Base)
+          result.attributes.merge(_model_class: result.class.name)
+        elsif defined?(::ActiveRecord::Relation) && result.is_a?(::ActiveRecord::Relation)
+          serialize_result(result.to_a)
+        else
+          safe_inspect(result)
+        end
       end
     end
 
@@ -377,12 +477,15 @@ module RailsActiveMcp
       case result
       when Array
         result.size
-      when ActiveRecord::Relation
-        result.count
       when Numeric
         1
       else
-        1
+        # Handle ActiveRecord::Relation if available
+        if defined?(::ActiveRecord::Relation) && result.is_a?(::ActiveRecord::Relation)
+          result.count
+        else
+          1
+        end
       end
     end
 
@@ -497,4 +600,5 @@ module RailsActiveMcp
       RailsActiveMcp.logger.warn "Failed to reload in development: #{e.message}" if defined?(RailsActiveMcp.logger)
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end

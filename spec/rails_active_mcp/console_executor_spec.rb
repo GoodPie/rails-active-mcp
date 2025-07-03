@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# noinspection RubyResolve
 require 'spec_helper'
 
 RSpec.describe RailsActiveMcp::ConsoleExecutor do
@@ -9,7 +10,7 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
   before do
     # Set up basic configuration for testing
     config.safe_mode = false # Disable for basic tests to allow simple Ruby operations
-    config.default_timeout = 5
+    config.command_timeout = 5
     config.max_results = 10
   end
 
@@ -107,27 +108,31 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
       before { config.safe_mode = true }
 
       it 'blocks dangerous system calls' do
-        expect do
-          executor.execute('system("ls")', safe_mode: true)
-        end.to raise_error(RailsActiveMcp::SafetyError)
+        result = executor.execute('system("ls")', safe_mode: true)
+
+        expect(result[:success]).to be false
+        expect(result[:error_class]).to eq('SafetyError')
+        expect(result[:error]).to include('safety check')
       end
 
       it 'blocks file operations' do
-        expect do
-          executor.execute('File.delete("test.txt")', safe_mode: true)
-        end.to raise_error(RailsActiveMcp::SafetyError)
+        result = executor.execute('File.delete("test.txt")', safe_mode: true)
+
+        expect(result[:success]).to be false
+        expect(result[:error_class]).to eq('SafetyError')
+        expect(result[:error]).to include('safety check')
       end
     end
 
     context 'with timeout' do
       it 'respects custom timeout' do
-        start_time = Time.zone.now
+        start_time = Time.now
 
         expect do
           executor.execute('sleep 10', timeout: 1)
         end.to raise_error(RailsActiveMcp::TimeoutError)
 
-        execution_time = Time.zone.now - start_time
+        execution_time = Time.now - start_time
         expect(execution_time).to be < 2 # Should timeout much faster than 10 seconds
       end
     end
@@ -169,17 +174,21 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
     end
 
     it 'blocks unsafe query methods' do
-      expect do
-        executor.execute_safe_query(model: 'User', method: 'delete_all')
-      end.to raise_error(RailsActiveMcp::SafetyError, /not allowed for safe queries/)
+      result = executor.execute_safe_query(model: 'User', method: 'delete_all')
+
+      expect(result[:success]).to be false
+      expect(result[:error_class]).to eq('SafetyError')
+      expect(result[:error]).to include('not allowed for safe queries')
     end
 
     it 'blocks access to disallowed models' do
-      config.block_models('SecretModel')
+      config.allowed_models = ['User'] # Only allow User model, block SecretModel
 
-      expect do
-        executor.execute_safe_query(model: 'SecretModel', method: 'count')
-      end.to raise_error(RailsActiveMcp::SafetyError, /not allowed/)
+      result = executor.execute_safe_query(model: 'SecretModel', method: 'count')
+
+      expect(result[:success]).to be false
+      expect(result[:error_class]).to eq('SafetyError')
+      expect(result[:error]).to include('not allowed')
     end
   end
 
@@ -206,10 +215,15 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
     context 'when Rails is available' do
       before do
         # Mock Rails for testing
+        rails_routes = double('Routes', url_helpers: Module.new)
+        rails_executor = double('Executor')
+        rails_app = double('Application', routes: rails_routes, executor: rails_executor)
+        rails_env = double('Environment', development?: false, production?: false)
+
         stub_const('Rails', double('Rails'))
-        allow(Rails).to receive_messages(application: double('Application'),
-                                         env: double('Environment',
-                                                     development?: false))
+        allow(Rails).to receive(:application).and_return(rails_app)
+        allow(Rails).to receive(:env).and_return(rails_env)
+        allow(rails_executor).to receive(:wrap).and_yield
       end
 
       it 'uses Rails executor when available' do
@@ -239,7 +253,19 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
 
     context 'when ActiveRecord is available' do
       before do
-        stub_const('ActiveRecord::Base', double('ActiveRecord'))
+        # Mock Rails for testing
+        rails_routes = double('Routes', url_helpers: Module.new)
+        rails_executor = double('Executor')
+        rails_app = double('Application', routes: rails_routes, executor: rails_executor)
+        rails_env = double('Environment', development?: false, production?: false)
+
+        stub_const('Rails', double('Rails'))
+        allow(Rails).to receive(:application).and_return(rails_app)
+        allow(Rails).to receive(:env).and_return(rails_env)
+        allow(rails_executor).to receive(:wrap).and_yield
+
+        # Mock ActiveRecord
+        stub_const('::ActiveRecord::Base', double('ActiveRecord'))
         mock_pool = double('ConnectionPool')
         allow(ActiveRecord::Base).to receive(:connection_pool).and_return(mock_pool)
         allow(mock_pool).to receive(:with_connection).and_yield
@@ -292,9 +318,18 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
 
   describe 'development mode reloading' do
     before do
+      rails_routes = double('Routes', url_helpers: Module.new)
+      rails_reloader = double('Reloader')
+      rails_executor = double('Executor')
+      rails_app = double('Application', routes: rails_routes, reloader: rails_reloader, executor: rails_executor)
+      rails_env = double('Environment', development?: true, production?: false)
+
       stub_const('Rails', double('Rails'))
-      allow(Rails).to receive_messages(env: double('Environment', development?: true),
-                                       application: double('Application'))
+      allow(Rails).to receive(:application).and_return(rails_app)
+      allow(Rails).to receive(:env).and_return(rails_env)
+      allow(rails_executor).to receive(:wrap).and_yield
+      allow(rails_reloader).to receive(:check!).and_return(false)
+      allow(rails_reloader).to receive(:reload!)
     end
 
     it 'handles reloading when available' do

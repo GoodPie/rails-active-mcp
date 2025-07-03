@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   test:
@@ -12,141 +12,147 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ['3.0', '3.1', '3.2', '3.3']
-        rails-version: ['6.1', '7.0', '7.1', '7.2']
+        ruby-version: ["3.0", "3.1", "3.2", "3.3"]
+        rails-version: ["6.1", "7.0", "7.1", "7.2"]
         exclude:
           # Exclude some combinations that aren't supported
-          - ruby-version: '3.0'
-            rails-version: '7.2'
+          - ruby-version: "3.0"
+            rails-version: "7.2"
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Ruby ${{ matrix.ruby-version }}
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: ${{ matrix.ruby-version }}
-        bundler-cache: true
+      - name: Set up Ruby ${{ matrix.ruby-version }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true
 
-    - name: Set up Rails ${{ matrix.rails-version }}
-      run: |
-        bundle config set --local gemfile "gemfiles/rails_${{ matrix.rails-version }}.gemfile"
-        bundle install
+      - name: Set up Rails ${{ matrix.rails-version }}
+        run: |
+          bundle config set --local gemfile "gemfiles/rails_${{ matrix.rails-version }}.gemfile"
+          bundle install
+        env:
+          RAILS_ENV: test
 
-    - name: Setup test database
-      run: |
-        bundle exec rails db:create
-        bundle exec rails db:migrate
-      env:
-        RAILS_ENV: test
+      - name: Setup test database
+        run: |
+          bundle exec rails db:create
+          bundle exec rails db:migrate
+        env:
+          RAILS_ENV: test
 
-    - name: Run RSpec tests
-      run: bundle exec rspec --format progress --format RspecJunitFormatter --out tmp/rspec.xml
+      - name: Run RSpec tests
+        run: bundle exec rspec --format progress --format RspecJunitFormatter --out tmp/rspec.xml
+        env:
+          RAILS_ENV: test
 
-    - name: Run integration tests
-      run: bin/test-mcp-output
+      - name: Run integration tests
+        run: bin/test-mcp-output
+        env:
+          RAILS_ENV: test
 
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-results-ruby-${{ matrix.ruby-version }}-rails-${{ matrix.rails-version }}
-        path: tmp/rspec.xml
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-ruby-${{ matrix.ruby-version }}-rails-${{ matrix.rails-version }}
+          path: tmp/rspec.xml
 
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.2'
-        bundler-cache: true
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
 
-    - name: Run RuboCop
-      run: bundle exec rubocop --format github
+      - name: Run RuboCop
+        run: bundle exec rubocop --format github
 
   security:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.2'
-        bundler-cache: true
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
 
-    - name: Run Bundler Audit
-      run: |
-        gem install bundler-audit
-        bundle audit --update
+      - name: Run Bundler Audit
+        run: |
+          gem install bundler-audit
+          bundle audit --update
 
-    - name: Run Brakeman (if applicable)
-      run: |
-        if [ -f "spec/dummy/config/application.rb" ]; then
-          gem install brakeman
-          cd spec/dummy && brakeman --no-pager
-        fi
+      - name: Run Brakeman (if applicable)
+        run: |
+          if [ -f "spec/dummy/config/application.rb" ]; then
+            gem install brakeman
+            cd spec/dummy && brakeman --no-pager
+          fi
 
   performance:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.2'
-        bundler-cache: true
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
 
-    - name: Run performance benchmarks
-      run: |
-        bundle exec rails runner "require 'benchmark'; puts Benchmark.measure { 100.times { RailsActiveMcp.safe?('User.count') } }"
+      - name: Run performance benchmarks
+        run: |
+          bundle exec rails runner "require 'benchmark'; puts Benchmark.measure { 100.times { RailsActiveMcp.safe?('User.count') } }"
 
   compatibility:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.2'
-        bundler-cache: true
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
 
-    - name: Test MCP protocol compliance
-      run: |
-        # Start server in background
-        timeout 30 bundle exec exe/rails-active-mcp-server stdio < /dev/null &
-        SERVER_PID=$!
-        
-        # Give server time to start
-        sleep 3
-        
-        # Test basic MCP protocol
-        echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | timeout 5 bundle exec exe/rails-active-mcp-server stdio | jq .
-        
-        # Clean up
-        kill $SERVER_PID || true
+      - name: Test MCP protocol compliance
+        run: |
+          # Start server in background
+          timeout 30 bundle exec exe/rails-active-mcp-server stdio < /dev/null &
+          SERVER_PID=$!
+
+          # Give server time to start
+          sleep 3
+
+          # Test basic MCP protocol
+          echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | timeout 5 bundle exec exe/rails-active-mcp-server stdio | jq .
+
+          # Clean up
+          kill $SERVER_PID || true
 
   publish-dry-run:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.2'
-        bundler-cache: true
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
 
-    - name: Build gem
-      run: gem build rails_active_mcp.gemspec
+      - name: Build gem
+        run: gem build rails_active_mcp.gemspec
 
-    - name: Test gem installation
-      run: |
-        gem install ./rails_active_mcp-*.gem
-        ruby -e "require 'rails_active_mcp'; puts RailsActiveMcp::VERSION" 
+      - name: Test gem installation
+        run: |
+          gem install ./rails_active_mcp-*.gem
+          ruby -e "require 'rails_active_mcp'; puts RailsActiveMcp::VERSION"

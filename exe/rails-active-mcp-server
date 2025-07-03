@@ -4,6 +4,7 @@
 # Require essential gems first
 require 'json'
 require 'stringio'
+require 'fileutils'
 
 # CRITICAL: Redirect stdout IMMEDIATELY for stdio mode to prevent any output interference
 # This must happen before any other gem loading
@@ -37,16 +38,16 @@ if File.exist?('config/environment.rb')
     rails_loaded = true
 
     # Log successful Rails loading
-    warn "[#{Time.zone.now}] [RAILS-MCP] INFO: Rails environment loaded successfully" if should_redirect
+    warn "[#{Time.now}] [RAILS-MCP] INFO: Rails environment loaded successfully" if should_redirect
   rescue StandardError => e
     # Rails loading failed, continue without it
     rails_load_error = e
     # Log to stderr (which is already redirected if needed)
-    warn "[#{Time.zone.now}] [RAILS-MCP] WARNING: Failed to load Rails environment: #{e.message}"
-    warn "[#{Time.zone.now}] [RAILS-MCP] WARNING: #{e.backtrace.first(3).join("\n")}" if ENV['RAILS_MCP_DEBUG']
+    warn "[#{Time.now}] [RAILS-MCP] WARNING: Failed to load Rails environment: #{e.message}"
+    warn "[#{Time.now}] [RAILS-MCP] WARNING: #{e.backtrace.first(3).join("\n")}" if ENV['RAILS_MCP_DEBUG']
   end
 elsif should_redirect
-  warn "[#{Time.zone.now}] [RAILS-MCP] INFO: No Rails environment found (config/environment.rb missing)"
+  warn "[#{Time.now}] [RAILS-MCP] INFO: No Rails environment found (config/environment.rb missing)"
 end
 
 # Restore stdout after Rails loading for stdio mode (stderr stays redirected)
@@ -55,7 +56,7 @@ if should_redirect
   captured_content = captured_stdout.string
   unless captured_content.empty?
     # Log any captured content to stderr for debugging
-    warn "[#{Time.zone.now}] [RAILS-MCP] WARNING: Captured stdout during loading: #{captured_content.inspect}"
+    warn "[#{Time.now}] [RAILS-MCP] WARNING: Captured stdout during loading: #{captured_content.inspect}"
     $stderr.flush
   end
 
@@ -67,7 +68,7 @@ end
 begin
   require_relative '../lib/rails_active_mcp'
 rescue LoadError => e
-  warn "[#{Time.zone.now}] [RAILS-MCP] FATAL: Failed to load rails_active_mcp gem: #{e.message}"
+  warn "[#{Time.now}] [RAILS-MCP] FATAL: Failed to load rails_active_mcp gem: #{e.message}"
   exit(1)
 end
 
@@ -99,32 +100,32 @@ end
 # Auto-detect Rails root and change directory if needed
 rails_root = find_rails_root
 if rails_root && rails_root != Dir.pwd
-  warn "[#{Time.zone.now}] [RAILS-MCP] INFO: Detected Rails root at #{rails_root}, changing directory" if should_redirect
+  warn "[#{Time.now}] [RAILS-MCP] INFO: Detected Rails root at #{rails_root}, changing directory" if should_redirect
   Dir.chdir(rails_root)
 elsif rails_root.nil?
   # Check if we're in the gem directory and need to find a Rails app
   if File.basename(Dir.pwd) == 'rails-active-mcp-gem' || Dir.pwd.include?('rails-active-mcp-gem')
-    warn "[#{Time.zone.now}] [RAILS-MCP] ERROR: Running from gem directory, not Rails application directory"
-    warn "[#{Time.zone.now}] [RAILS-MCP] ERROR: Please run the server from your Rails application root directory"
-    warn "[#{Time.zone.now}] [RAILS-MCP] ERROR: Example: cd /path/to/your/rails/app && /path/to/rails-active-mcp-gem/exe/rails-active-mcp-server stdio"
+    warn "[#{Time.now}] [RAILS-MCP] ERROR: Running from gem directory, not Rails application directory"
+    warn "[#{Time.now}] [RAILS-MCP] ERROR: Please run the server from your Rails application root directory"
+    warn "[#{Time.now}] [RAILS-MCP] ERROR: Example: cd /path/to/your/rails/app && /path/to/rails-active-mcp-gem/exe/rails-active-mcp-server stdio"
     exit(1)
   end
 
   # Final check for Gemfile in current directory
   unless File.exist?('Gemfile')
-    warn "[#{Time.zone.now}] [RAILS-MCP] ERROR: Could not locate Gemfile in current directory: #{Dir.pwd}"
-    warn "[#{Time.zone.now}] [RAILS-MCP] ERROR: Please ensure you're running from a Rails application root directory"
-    warn "[#{Time.zone.now}] [RAILS-MCP] ERROR: Current directory contents:"
+    warn "[#{Time.now}] [RAILS-MCP] ERROR: Could not locate Gemfile in current directory: #{Dir.pwd}"
+    warn "[#{Time.now}] [RAILS-MCP] ERROR: Please ensure you're running from a Rails application root directory"
+    warn "[#{Time.now}] [RAILS-MCP] ERROR: Current directory contents:"
     Dir.entries('.').each do |entry|
-      warn "[#{Time.zone.now}] [RAILS-MCP] ERROR:   #{entry}" unless entry.start_with?('.')
+      warn "[#{Time.now}] [RAILS-MCP] ERROR:   #{entry}" unless entry.start_with?('.')
     end
     exit(1)
   end
 end
 
 # Log the working directory for debugging
-warn "[#{Time.zone.now}] [RAILS-MCP] INFO: Working directory: #{Dir.pwd}" if should_redirect
-warn "[#{Time.zone.now}] [RAILS-MCP] INFO: Gemfile found: #{File.exist?('Gemfile')}" if should_redirect
+warn "[#{Time.now}] [RAILS-MCP] INFO: Working directory: #{Dir.pwd}" if should_redirect
+warn "[#{Time.now}] [RAILS-MCP] INFO: Gemfile found: #{File.exist?('Gemfile')}" if should_redirect
 
 case transport
 when 'stdio'
@@ -133,24 +134,24 @@ when 'stdio'
     require_relative '../lib/rails_active_mcp/sdk/server'
 
     # Log startup information
-    warn "[#{Time.zone.now}] [RAILS-MCP] INFO: Starting Rails Active MCP Server v#{RailsActiveMcp::VERSION}" if should_redirect
-    warn "[#{Time.zone.now}] [RAILS-MCP] INFO: Rails loaded: #{rails_loaded}" if should_redirect
+    warn "[#{Time.now}] [RAILS-MCP] INFO: Starting Rails Active MCP Server v#{RailsActiveMcp::VERSION}" if should_redirect
+    warn "[#{Time.now}] [RAILS-MCP] INFO: Rails loaded: #{rails_loaded}" if should_redirect
     if rails_load_error && should_redirect
-      warn "[#{Time.zone.now}] [RAILS-MCP] WARNING: Rails load error: #{rails_load_error.class.name}: #{rails_load_error.message}"
+      warn "[#{Time.now}] [RAILS-MCP] WARNING: Rails load error: #{rails_load_error.class.name}: #{rails_load_error.message}"
     end
 
     server = RailsActiveMcp::Sdk::Server.new
     server.run_stdio
   rescue Interrupt
-    warn "[#{Time.zone.now}] [RAILS-MCP] INFO: Server interrupted by user" if should_redirect
+    warn "[#{Time.now}] [RAILS-MCP] INFO: Server interrupted by user" if should_redirect
     exit(0)
   rescue LoadError => e
-    warn "[#{Time.zone.now}] [RAILS-MCP] FATAL: MCP SDK not available: #{e.message}"
-    warn "[#{Time.zone.now}] [RAILS-MCP] FATAL: Please install the MCP gem: gem install mcp"
+    warn "[#{Time.now}] [RAILS-MCP] FATAL: MCP SDK not available: #{e.message}"
+    warn "[#{Time.now}] [RAILS-MCP] FATAL: Please install the MCP gem: gem install mcp"
     exit(1)
   rescue StandardError => e
-    warn "[#{Time.zone.now}] [RAILS-MCP] FATAL: Server startup failed: #{e.message}"
-    warn "[#{Time.zone.now}] [RAILS-MCP] FATAL: #{e.backtrace.join("\n")}" if ENV['RAILS_MCP_DEBUG']
+    warn "[#{Time.now}] [RAILS-MCP] FATAL: Server startup failed: #{e.message}"
+    warn "[#{Time.now}] [RAILS-MCP] FATAL: #{e.backtrace.join("\n")}" if ENV['RAILS_MCP_DEBUG']
     exit(1)
   end
 

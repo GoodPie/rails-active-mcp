@@ -1,0 +1,104 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Rails Active MCP Server Script
+# This script starts the Rails Active MCP server for your Rails application
+
+# Ensure we're in the Rails application directory
+unless File.exist?('config/environment.rb') && File.exist?('Gemfile')
+  puts 'Error: This script must be run from the root of a Rails application'
+  puts "Current directory: #{Dir.pwd}"
+  puts 'Please ensure you have both config/environment.rb and Gemfile in your project root'
+  exit(1)
+end
+
+# Load bundler and ensure the gem is available
+begin
+  require 'bundler/setup'
+rescue LoadError => e
+  puts "Error: Bundler not available: #{e.message}"
+  puts 'Please run: gem install bundler'
+  exit(1)
+end
+
+# Check if rails-active-mcp is in the bundle
+begin
+  gem 'rails-active-mcp'
+rescue Gem::LoadError
+  puts 'Error: rails-active-mcp gem not found in bundle'
+  puts "Please add to your Gemfile: gem 'rails-active-mcp'"
+  puts 'Then run: bundle install'
+  exit(1)
+end
+
+# Load Rails environment
+begin
+  require_relative '../config/environment'
+rescue LoadError => e
+  puts "Error: Failed to load Rails environment: #{e.message}"
+  puts 'Please ensure your Rails application is properly configured'
+  exit(1)
+end
+
+# Load Rails Active MCP
+begin
+  require 'rails_active_mcp'
+rescue LoadError => e
+  puts "Error: Failed to load Rails Active MCP: #{e.message}"
+  puts 'Please ensure the gem is properly installed'
+  exit(1)
+end
+
+# Ensure configuration is loaded
+unless RailsActiveMcp.configuration
+  puts 'Warning: Rails Active MCP configuration not found'
+  puts 'Please run: rails generate rails_active_mcp:install'
+  puts 'Using default configuration...'
+  RailsActiveMcp.configure
+end
+
+# Start the server
+begin
+  require 'rails_active_mcp/sdk/server'
+
+  # Parse command line arguments
+  transport = ARGV[0] || 'stdio'
+
+  case transport
+  when 'stdio', nil
+    puts 'Starting Rails Active MCP Server in stdio mode...' if ENV['RAILS_MCP_DEBUG']
+    server = RailsActiveMcp::Sdk::Server.new
+    server.run_stdio
+  when '--help', '-h'
+    puts <<~HELP
+      Rails Active MCP Server
+
+      Usage: #{File.basename($PROGRAM_NAME)} [mode] [options]
+
+      Modes:
+        stdio     Start in stdio mode for MCP integration (default)
+        --help    Show this help message
+
+      Environment Variables:
+        RAILS_MCP_DEBUG=1    Enable debug logging
+        RAILS_ENV=env        Set Rails environment (default: development)
+
+      Examples:
+        #{File.basename($PROGRAM_NAME)}                    # Start in stdio mode
+        #{File.basename($PROGRAM_NAME)} stdio              # Start in stdio mode explicitly
+        RAILS_MCP_DEBUG=1 #{File.basename($PROGRAM_NAME)}  # Start with debug logging
+    HELP
+  else
+    puts "Error: Unknown transport mode '#{transport}'"
+    puts 'Use --help for usage information'
+    exit(1)
+  end
+rescue Interrupt
+  puts "\nServer stopped by user"
+  exit(0)
+rescue StandardError => e
+  puts "Error: Failed to start server: #{e.message}"
+  puts 'Backtrace:' if ENV['RAILS_MCP_DEBUG']
+  puts e.backtrace if ENV['RAILS_MCP_DEBUG']
+  exit(1)
+end

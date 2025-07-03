@@ -1,3 +1,4 @@
+# noinspection RubyResolve
 require 'spec_helper'
 
 RSpec.describe RailsActiveMcp::SafetyChecker do

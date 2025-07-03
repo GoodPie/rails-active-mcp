@@ -7,28 +7,28 @@ gem 'rails', '~> 7.1.0'
 # Include the main gemspec
 gemspec path: '../'
 
-# Rails 7.1 specific dependencies
-gem 'importmap-rails', '>= 1.0'
-gem 'sprockets-rails', '>= 3.4.0'
-gem 'stimulus-rails', '>= 1.0'
-gem 'turbo-rails', '>= 1.0'
-
-# Database adapters
-gem 'mysql2', '~> 0.5'
-gem 'pg', '~> 1.1'
-gem 'sqlite3', '~> 1.6'
-
-# Testing gems
-gem 'factory_bot_rails', '~> 6.0'
-gem 'faker', '~> 3.0'
-gem 'rspec-rails', '~> 6.0'
-
-# Development and debugging
-gem 'debug', '>= 1.0.0'
-gem 'web-console', '>= 4.0'
-
 group :development, :test do
-  gem 'rubocop'
-  gem 'rubocop-rails'
-  gem 'rubocop-rspec'
+  gem 'byebug'
+  gem 'database_cleaner-active_record', '~> 2.1'
+  gem 'factory_bot_rails', '~> 6.0'
+  gem 'rspec', '~> 3.1'
+  gem 'rspec-rails'
+  gem 'sqlite3', '~> 2.7'
+  gem 'timecop', '~> 0.9.8'
+  gem 'webmock', '~> 3.19'
 end
+
+group :development do
+  gem 'redcarpet' # For YARD markdown support
+  gem 'rubocop', '~> 1.77'
+  gem 'rubocop-rails', '~> 2.32'
+  gem 'rubocop-rspec'
+  gem 'simplecov', '~> 0.22'
+  gem 'yard'
+end
+
+# For testing the gem in a Rails app
+gem 'sprockets-rails' # Required for Rails 7+
+
+# Official MCP Ruby SDK for migration
+gem 'mcp', '~> 0.1.0'
