@@ -166,11 +166,11 @@ module RailsActiveMcp
                  desc: 'Explicit Rails project path'
     class_option :auto_detect, aliases: '-a', type: :boolean,
                  desc: 'Auto-detect Rails project from current directory'
-    class_option :safe_mode, type: :boolean, default: true,
+    class_option :safe_mode, type: :boolean,
                  desc: 'Enable safe mode (blocks dangerous operations)'
-    class_option :timeout, type: :numeric, default: 30,
+    class_option :timeout, type: :numeric,
                  desc: 'Command timeout in seconds'
-    class_option :log_level, type: :string, default: 'info',
+    class_option :log_level, type: :string,
                  desc: 'Log level: debug, info, warn, error'
     class_option :dry_run, type: :boolean,
                  desc: 'Show configuration without starting server'
@@ -204,8 +204,8 @@ module RailsActiveMcp
         exit 1
       end
 
-      # Build configuration
-      config = build_configuration
+      # Build configuration with project path for config file loading
+      config = build_configuration(project_path)
 
       # Handle dry-run mode
       if options[:dry_run]
@@ -348,27 +348,98 @@ module RailsActiveMcp
       ProjectUtils.determine_rails_path(options)
     end
 
-    def build_configuration
-      config = RailsActiveMcp::Configuration.new
+    def build_configuration(project_path = nil)
+      # Create configuration with project path for automatic config loading
+      config = RailsActiveMcp::Configuration.new(project_path)
 
-      # Apply CLI options
-      config.safe_mode = options[:safe_mode] if options.key?(:safe_mode)
-      config.command_timeout = options[:timeout] if options[:timeout]
-      config.log_level = options[:log_level].to_sym if options[:log_level]
+      # Apply CLI options (highest precedence) - only when explicitly provided
+      cli_options = {}
+      cli_options[:safe_mode] = options[:safe_mode] if !options[:safe_mode].nil?
+      cli_options[:command_timeout] = options[:timeout] if options[:timeout]
+      cli_options[:log_level] = options[:log_level] if options[:log_level]
+
+      # Merge CLI options into configuration
+      config.merge!(cli_options) unless cli_options.empty?
 
       config
     end
 
     def display_configuration(config, project_path)
       say "Rails Active MCP Server Configuration", :blue
-      say "=" * 40
+      say "=" * 50
       say "Rails Project: #{project_path}"
-      say "Safe Mode: #{config.safe_mode}"
-      say "Command Timeout: #{config.command_timeout}s"
-      say "Log Level: #{config.log_level}"
-      say "Max Results: #{config.max_results}"
+      say ""
+
+      # Show configuration sources
+      say "Configuration Sources:", :cyan
+      show_config_sources(project_path)
+      say ""
+
+      # Show current configuration values
+      say "Current Configuration:", :cyan
+      config_hash = config.to_h
+      config_hash.each do |key, value|
+        formatted_value = case value
+                         when Array
+                           value.empty? ? "[]" : "[#{value.join(', ')}]"
+                         when nil
+                           "nil"
+                         else
+                           value.to_s
+                         end
+        say "  #{key}: #{formatted_value}"
+      end
+
       say ""
       say "Server would start with these settings.", :green
+    end
+
+    def show_config_sources(project_path)
+      # Check global config
+      global_config_path = if ENV['XDG_CONFIG_HOME']
+                            File.join(ENV['XDG_CONFIG_HOME'], 'rails_active_mcp', 'config.json')
+                          else
+                            File.expand_path('~/.config/rails_active_mcp/config.json')
+                          end
+
+      if File.exist?(global_config_path)
+        say "  ✓ Global config: #{global_config_path}", :green
+      else
+        say "  ✗ Global config: #{global_config_path} (not found)", :yellow
+      end
+
+      # Check project config
+      if project_path
+        project_config_path = File.join(project_path, 'config', 'rails_active_mcp.json')
+        if File.exist?(project_config_path)
+          say "  ✓ Project config: #{project_config_path}", :green
+        else
+          say "  ✗ Project config: #{project_config_path} (not found)", :yellow
+        end
+      end
+
+      # Check environment variables
+      env_vars = ENV.keys.select { |key| key.start_with?('RAILS_MCP_') }
+      if env_vars.any?
+        say "  ✓ Environment variables: #{env_vars.join(', ')}", :green
+      else
+        say "  ✗ Environment variables: none set", :yellow
+      end
+
+      # Check CLI options
+      cli_options = []
+      cli_options << "--safe-mode #{options[:safe_mode]}" if !options[:safe_mode].nil?
+      cli_options << "--timeout #{options[:timeout]}" if options[:timeout]
+      cli_options << "--log-level #{options[:log_level]}" if options[:log_level]
+      cli_options << "--auto-detect" if options[:auto_detect]
+      cli_options << "--project #{options[:project]}" if options[:project]
+      cli_options << "--dry-run" if options[:dry_run]
+
+      if cli_options.any?
+        say "  ✓ CLI options: #{cli_options.join(', ')}", :green
+      else
+        say "  ✗ CLI options: none provided", :yellow
+      end
     end
 
     def start_server(config, project_path)
