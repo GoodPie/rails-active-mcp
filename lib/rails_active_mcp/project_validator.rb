@@ -27,7 +27,7 @@ module RailsActiveMcp
 
       # Determine overall validation status
       has_errors = results.any? { |r| r[:status] == :error }
-      
+
       {
         valid: !has_errors,
         project_path: @project_path,
@@ -47,7 +47,7 @@ module RailsActiveMcp
     # Validate Rails application structure
     def validate_rails_structure
       config_app_rb = File.join(@project_path, 'config', 'application.rb')
-      
+
       if File.exist?(config_app_rb)
         {
           name: 'Rails Application Structure',
@@ -62,8 +62,8 @@ module RailsActiveMcp
         # Check for additional Rails indicators
         routes_rb = File.join(@project_path, 'config', 'routes.rb')
         app_dir = File.join(@project_path, 'app')
-        
-        if File.exist?(routes_rb) || (File.directory?(app_dir) && has_rails_app_structure?)
+
+        if File.exist?(routes_rb) || (File.directory?(app_dir) && rails_app_structure?)
           {
             name: 'Rails Application Structure',
             status: :warning,
@@ -72,7 +72,7 @@ module RailsActiveMcp
               file: config_app_rb,
               exists: false,
               routes_exists: File.exist?(routes_rb),
-              app_structure: has_rails_app_structure?
+              app_structure: rails_app_structure?
             }
           }
         else
@@ -92,7 +92,7 @@ module RailsActiveMcp
     # Validate Gemfile existence
     def validate_gemfile
       gemfile_path = File.join(@project_path, 'Gemfile')
-      
+
       if File.exist?(gemfile_path)
         {
           name: 'Gemfile',
@@ -120,76 +120,21 @@ module RailsActiveMcp
     # Validate Rails dependency in Gemfile
     def validate_rails_dependency
       gemfile_path = File.join(@project_path, 'Gemfile')
-      
-      unless File.exist?(gemfile_path)
-        return {
-          name: 'Rails Dependency',
-          status: :error,
-          message: 'Cannot check Rails dependency - Gemfile not found',
-          details: {
-            file: gemfile_path,
-            exists: false
-          }
-        }
-      end
 
-      begin
-        gemfile_content = File.read(gemfile_path)
-        
-        if gemfile_content.match?(/gem\s+['"]rails['"]/)
-          {
-            name: 'Rails Dependency',
-            status: :ok,
-            message: 'Rails dependency found in Gemfile',
-            details: {
-              file: gemfile_path,
-              has_rails_gem: true
-            }
-          }
-        else
-          {
-            name: 'Rails Dependency',
-            status: :warning,
-            message: 'No explicit Rails dependency found in Gemfile',
-            details: {
-              file: gemfile_path,
-              has_rails_gem: false,
-              note: 'Rails might be included via other gems or Gemfile.lock'
-            }
-          }
-        end
-      rescue Errno::EACCES
-        {
-          name: 'Rails Dependency',
-          status: :error,
-          message: 'Cannot read Gemfile - permission denied',
-          details: {
-            file: gemfile_path,
-            readable: false
-          }
-        }
-      rescue => e
-        {
-          name: 'Rails Dependency',
-          status: :error,
-          message: "Error reading Gemfile: #{e.message}",
-          details: {
-            file: gemfile_path,
-            error: e.class.name
-          }
-        }
-      end
+      return gemfile_not_found_result(gemfile_path) unless File.exist?(gemfile_path)
+
+      check_rails_dependency_in_gemfile(gemfile_path)
     end
 
     # Validate database configuration
     def validate_database_config
       database_config = File.join(@project_path, 'config', 'database.yml')
-      
+
       if File.exist?(database_config)
         begin
           # Try to read the file to ensure it's accessible
           File.read(database_config)
-          
+
           {
             name: 'Database Configuration',
             status: :ok,
@@ -211,7 +156,7 @@ module RailsActiveMcp
               readable: false
             }
           }
-        rescue => e
+        rescue StandardError => e
           {
             name: 'Database Configuration',
             status: :warning,
@@ -241,12 +186,12 @@ module RailsActiveMcp
     def validate_mcp_compatibility
       # Check if we can load the Rails environment
       original_dir = Dir.pwd
-      
+
       begin
         Dir.chdir(@project_path)
-        
+
         environment_rb = File.join(@project_path, 'config', 'environment.rb')
-        
+
         unless File.exist?(environment_rb)
           return {
             name: 'MCP Compatibility',
@@ -293,7 +238,7 @@ module RailsActiveMcp
     end
 
     # Check if the app directory has typical Rails structure
-    def has_rails_app_structure?
+    def rails_app_structure?
       app_dir = File.join(@project_path, 'app')
       return false unless File.directory?(app_dir)
 
@@ -302,7 +247,7 @@ module RailsActiveMcp
       rails_subdirs_found = rails_subdirs.count do |subdir|
         File.directory?(File.join(app_dir, subdir))
       end
-      
+
       rails_subdirs_found >= 2
     end
 
@@ -313,14 +258,14 @@ module RailsActiveMcp
         begin
           # Try to require the environment
           require './config/environment'
-          
+
           rails_version = defined?(Rails) && Rails.respond_to?(:version) ? Rails.version : 'unknown'
-          
+
           {
             success: true,
             rails_version: rails_version
           }
-        rescue => e
+        rescue StandardError => e
           {
             success: false,
             error: e.message,
@@ -348,7 +293,86 @@ module RailsActiveMcp
         passed: ok_count,
         warnings: warning_count,
         errors: error_count,
-        overall_status: error_count > 0 ? 'failed' : (warning_count > 0 ? 'passed_with_warnings' : 'passed')
+        overall_status: if error_count > 0
+                          'failed'
+                        else
+                          (warning_count > 0 ? 'passed_with_warnings' : 'passed')
+                        end
+      }
+    end
+
+    def gemfile_not_found_result(gemfile_path)
+      {
+        name: 'Rails Dependency',
+        status: :error,
+        message: 'Cannot check Rails dependency - Gemfile not found',
+        details: {
+          file: gemfile_path,
+          exists: false
+        }
+      }
+    end
+
+    def check_rails_dependency_in_gemfile(gemfile_path)
+      gemfile_content = File.read(gemfile_path)
+
+      if gemfile_content.match?(/gem\s+['"]rails['"]/)
+        rails_dependency_found_result(gemfile_path)
+      else
+        rails_dependency_missing_result(gemfile_path)
+      end
+    rescue Errno::EACCES
+      gemfile_permission_denied_result(gemfile_path)
+    rescue StandardError => e
+      gemfile_read_error_result(gemfile_path, e)
+    end
+
+    def rails_dependency_found_result(gemfile_path)
+      {
+        name: 'Rails Dependency',
+        status: :ok,
+        message: 'Rails dependency found in Gemfile',
+        details: {
+          file: gemfile_path,
+          has_rails_gem: true
+        }
+      }
+    end
+
+    def rails_dependency_missing_result(gemfile_path)
+      {
+        name: 'Rails Dependency',
+        status: :warning,
+        message: 'No explicit Rails dependency found in Gemfile',
+        details: {
+          file: gemfile_path,
+          has_rails_gem: false,
+          note: 'Rails might be included via other gems or Gemfile.lock'
+        }
+      }
+    end
+
+    def gemfile_permission_denied_result(gemfile_path)
+      {
+        name: 'Rails Dependency',
+        status: :error,
+        message: 'Cannot read Gemfile - permission denied',
+        details: {
+          file: gemfile_path,
+          readable: false
+        }
+      }
+    end
+
+    def gemfile_read_error_result(gemfile_path, error)
+      {
+        name: 'Rails Dependency',
+        status: :error,
+        message: "Error reading Gemfile: #{error.message}",
+        details: {
+          file: gemfile_path,
+          error: error.class.name
+        }
       }
     end
   end

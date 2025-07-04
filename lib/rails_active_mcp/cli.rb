@@ -11,9 +11,7 @@ module RailsActiveMcp
       current_dir = File.expand_path(start_dir)
 
       # Validate starting directory exists and is readable
-      unless File.directory?(current_dir) && File.readable?(current_dir)
-        return nil
-      end
+      return nil unless File.directory?(current_dir) && File.readable?(current_dir)
 
       # Traverse upward until we find Rails project or hit filesystem root
       loop do
@@ -92,7 +90,7 @@ module RailsActiveMcp
         return explicit_path if explicit_path && rails_project?(explicit_path)
 
         # Path provided but not a Rails project
-        return nil
+        nil
       elsif options[:auto_detect]
         # Search upward from current directory
         find_rails_project_root(Dir.pwd)
@@ -109,7 +107,7 @@ module RailsActiveMcp
 
     # Validate and expand project path with security checks
     def self.validate_project_path(path)
-      return nil if path.nil? || path.empty?
+      return nil if path.blank?
 
       begin
         expanded_path = File.expand_path(path)
@@ -155,7 +153,7 @@ module RailsActiveMcp
 
   # Thor CLI implementation
   class CLI < Thor
-    package_name "rails-active-mcp-server"
+    package_name 'rails-active-mcp-server'
 
     # Handle Thor deprecation warning
     def self.exit_on_failure?
@@ -163,19 +161,19 @@ module RailsActiveMcp
     end
 
     class_option :project, aliases: '-p', type: :string,
-                 desc: 'Explicit Rails project path'
+                           desc: 'Explicit Rails project path'
     class_option :auto_detect, aliases: '-a', type: :boolean,
-                 desc: 'Auto-detect Rails project from current directory'
+                               desc: 'Auto-detect Rails project from current directory'
     class_option :safe_mode, type: :boolean,
-                 desc: 'Enable safe mode (blocks dangerous operations)'
+                             desc: 'Enable safe mode (blocks dangerous operations)'
     class_option :timeout, type: :numeric,
-                 desc: 'Command timeout in seconds'
+                           desc: 'Command timeout in seconds'
     class_option :log_level, type: :string,
-                 desc: 'Log level: debug, info, warn, error'
+                             desc: 'Log level: debug, info, warn, error'
     class_option :dry_run, type: :boolean,
-                 desc: 'Show configuration without starting server'
+                           desc: 'Show configuration without starting server'
 
-    desc "start", "Start the Rails Active MCP server"
+    desc 'start', 'Start the Rails Active MCP server'
     long_desc <<-LONGDESC
       Start the Rails Active MCP server for the specified or auto-detected Rails project.
 
@@ -194,14 +192,14 @@ module RailsActiveMcp
       project_path = determine_project_path
 
       unless project_path
-        say "Error: No Rails project found.", :red
-        say "Use --project PATH or --auto-detect, or run from within a Rails project."
-        exit 1
+        say 'Error: No Rails project found.', :red
+        say 'Use --project PATH or --auto-detect, or run from within a Rails project.'
+        raise Thor::Error, 'No Rails project found'
       end
 
       unless ProjectUtils.rails_project?(project_path)
         say "Error: #{project_path} is not a Rails project.", :red
-        exit 1
+        raise Thor::Error, "#{project_path} is not a Rails project"
       end
 
       # Build configuration with project path for config file loading
@@ -217,7 +215,7 @@ module RailsActiveMcp
       start_server(config, project_path)
     end
 
-    desc "generate_config", "Generate configuration file for the current project"
+    desc 'generate_config', 'Generate configuration file for the current project'
     long_desc <<-LONGDESC
       Generate a JSON configuration file for the Rails Active MCP server.
 
@@ -233,21 +231,21 @@ module RailsActiveMcp
       project_path = determine_project_path
 
       unless project_path
-        say "Error: No Rails project found.", :red
-        say "Use --project PATH or --auto-detect, or run from within a Rails project."
-        exit 1
+        say 'Error: No Rails project found.', :red
+        say 'Use --project PATH or --auto-detect, or run from within a Rails project.'
+        raise Thor::Error, 'No Rails project found'
       end
 
       unless ProjectUtils.rails_project?(project_path)
         say "Error: #{project_path} is not a Rails project.", :red
-        exit 1
+        raise Thor::Error, "#{project_path} is not a Rails project"
       end
 
       config_file = File.join(project_path, 'config', 'rails_active_mcp.json')
 
       if File.exist?(config_file)
         say "Configuration file already exists: #{config_file}", :yellow
-        return unless yes?("Overwrite existing configuration? (y/n)")
+        return unless yes?('Overwrite existing configuration? (y/n)')
       end
 
       # Generate default configuration
@@ -269,10 +267,10 @@ module RailsActiveMcp
 
       File.write(config_file, JSON.pretty_generate(default_config))
       say "Generated configuration file: #{config_file}", :green
-      say "Edit this file to customize your Rails Active MCP settings."
+      say 'Edit this file to customize your Rails Active MCP settings.'
     end
 
-    desc "validate_project", "Validate Rails project compatibility"
+    desc 'validate_project', 'Validate Rails project compatibility'
     long_desc <<-LONGDESC
       Validate that a Rails project is compatible with Rails Active MCP.
 
@@ -292,16 +290,16 @@ module RailsActiveMcp
 
       unless project_path
         if options[:json]
-          puts JSON.pretty_generate({
-            valid: false,
-            error: "No Rails project found",
-            message: "Use --project PATH or --auto-detect, or run from within a Rails project."
-          })
+          say JSON.pretty_generate({
+                                     valid: false,
+                                     error: 'No Rails project found',
+                                     message: 'Use --project PATH or --auto-detect, or run from within a Rails project.'
+                                   })
         else
-          say "Error: No Rails project found.", :red
-          say "Use --project PATH or --auto-detect, or run from within a Rails project."
+          say 'Error: No Rails project found.', :red
+          say 'Use --project PATH or --auto-detect, or run from within a Rails project.'
         end
-        exit 1
+        raise Thor::Error, 'No Rails project found'
       end
 
       # Use the ProjectValidator for comprehensive validation
@@ -310,14 +308,14 @@ module RailsActiveMcp
 
       if options[:json]
         # Output JSON format
-        puts validator.validate_json
+        say validator.validate_json
       else
         # Output human-readable format
         display_validation_results(results)
       end
 
-      # Exit with error code if validation failed
-      exit 1 unless results[:valid]
+      # Raise error if validation failed
+      raise Thor::Error, 'Project validation failed' unless results[:valid]
     end
 
     private
@@ -333,7 +331,7 @@ module RailsActiveMcp
 
       # Apply CLI options (highest precedence) - only when explicitly provided
       cli_options = {}
-      cli_options[:safe_mode] = options[:safe_mode] if !options[:safe_mode].nil?
+      cli_options[:safe_mode] = options[:safe_mode] unless options[:safe_mode].nil?
       cli_options[:command_timeout] = options[:timeout] if options[:timeout]
       cli_options[:log_level] = options[:log_level] if options[:log_level]
 
@@ -344,86 +342,104 @@ module RailsActiveMcp
     end
 
     def display_configuration(config, project_path)
-      say "Rails Active MCP Server Configuration", :blue
-      say "=" * 50
+      say 'Rails Active MCP Server Configuration', :blue
+      say '=' * 50
       say "Rails Project: #{project_path}"
-      say ""
+      say ''
 
       # Show configuration sources
-      say "Configuration Sources:", :cyan
+      say 'Configuration Sources:', :cyan
       show_config_sources(project_path)
-      say ""
+      say ''
 
       # Show current configuration values
-      say "Current Configuration:", :cyan
+      say 'Current Configuration:', :cyan
       config_hash = config.to_h
       config_hash.each do |key, value|
         formatted_value = case value
-                         when Array
-                           value.empty? ? "[]" : "[#{value.join(', ')}]"
-                         when nil
-                           "nil"
-                         else
-                           value.to_s
-                         end
+                          when Array
+                            value.empty? ? '[]' : "[#{value.join(', ')}]"
+                          when nil
+                            'nil'
+                          else
+                            value.to_s
+                          end
         say "  #{key}: #{formatted_value}"
       end
 
-      say ""
-      say "Server would start with these settings.", :green
+      say ''
+      say 'Server would start with these settings.', :green
     end
 
     def show_config_sources(project_path)
-      # Check global config
-      global_config_path = if ENV['XDG_CONFIG_HOME']
-                            File.join(ENV['XDG_CONFIG_HOME'], 'rails_active_mcp', 'config.json')
-                          else
-                            File.expand_path('~/.config/rails_active_mcp/config.json')
-                          end
+      show_global_config_status
+      show_project_config_status(project_path)
+      show_environment_variables_status
+      show_cli_options_status
+    end
+
+    def show_global_config_status
+      global_config_path = determine_global_config_path
 
       if File.exist?(global_config_path)
         say "  ✓ Global config: #{global_config_path}", :green
       else
         say "  ✗ Global config: #{global_config_path} (not found)", :yellow
       end
+    end
 
-      # Check project config
-      if project_path
-        project_config_path = File.join(project_path, 'config', 'rails_active_mcp.json')
-        if File.exist?(project_config_path)
-          say "  ✓ Project config: #{project_config_path}", :green
-        else
-          say "  ✗ Project config: #{project_config_path} (not found)", :yellow
-        end
+    def show_project_config_status(project_path)
+      return unless project_path
+
+      project_config_path = File.join(project_path, 'config', 'rails_active_mcp.json')
+      if File.exist?(project_config_path)
+        say "  ✓ Project config: #{project_config_path}", :green
+      else
+        say "  ✗ Project config: #{project_config_path} (not found)", :yellow
       end
+    end
 
-      # Check environment variables
+    def show_environment_variables_status
       env_vars = ENV.keys.select { |key| key.start_with?('RAILS_MCP_') }
       if env_vars.any?
         say "  ✓ Environment variables: #{env_vars.join(', ')}", :green
       else
-        say "  ✗ Environment variables: none set", :yellow
+        say '  ✗ Environment variables: none set', :yellow
       end
+    end
 
-      # Check CLI options
-      cli_options = []
-      cli_options << "--safe-mode #{options[:safe_mode]}" if !options[:safe_mode].nil?
-      cli_options << "--timeout #{options[:timeout]}" if options[:timeout]
-      cli_options << "--log-level #{options[:log_level]}" if options[:log_level]
-      cli_options << "--auto-detect" if options[:auto_detect]
-      cli_options << "--project #{options[:project]}" if options[:project]
-      cli_options << "--dry-run" if options[:dry_run]
+    def show_cli_options_status
+      cli_options = build_cli_options_list
 
       if cli_options.any?
         say "  ✓ CLI options: #{cli_options.join(', ')}", :green
       else
-        say "  ✗ CLI options: none provided", :yellow
+        say '  ✗ CLI options: none provided', :yellow
       end
+    end
+
+    def determine_global_config_path
+      if ENV['XDG_CONFIG_HOME']
+        File.join(ENV['XDG_CONFIG_HOME'], 'rails_active_mcp', 'config.json')
+      else
+        File.expand_path('~/.config/rails_active_mcp/config.json')
+      end
+    end
+
+    def build_cli_options_list
+      cli_options = []
+      cli_options << "--safe-mode #{options[:safe_mode]}" unless options[:safe_mode].nil?
+      cli_options << "--timeout #{options[:timeout]}" if options[:timeout]
+      cli_options << "--log-level #{options[:log_level]}" if options[:log_level]
+      cli_options << '--auto-detect' if options[:auto_detect]
+      cli_options << "--project #{options[:project]}" if options[:project]
+      cli_options << '--dry-run' if options[:dry_run]
+      cli_options
     end
 
     def display_validation_results(results)
       say "Validating Rails project: #{results[:project_path]}", :blue
-      say ""
+      say ''
 
       # Display each validation check
       results[:checks].each do |check|
@@ -437,24 +453,24 @@ module RailsActiveMcp
         end
       end
 
-      say ""
+      say ''
 
       # Display summary
       summary = results[:summary]
-      say "Validation Summary:", :cyan
+      say 'Validation Summary:', :cyan
       say "  Total checks: #{summary[:total_checks]}"
       say "  Passed: #{summary[:passed]}", :green
       say "  Warnings: #{summary[:warnings]}", :yellow if summary[:warnings] > 0
       say "  Errors: #{summary[:errors]}", :red if summary[:errors] > 0
 
-      say ""
+      say ''
       case summary[:overall_status]
       when 'passed'
-        say "✓ Project validation passed!", :green
+        say '✓ Project validation passed!', :green
       when 'passed_with_warnings'
-        say "⚠ Project validation passed with warnings", :yellow
+        say '⚠ Project validation passed with warnings', :yellow
       when 'failed'
-        say "✗ Project validation failed", :red
+        say '✗ Project validation failed', :red
       end
     end
 
@@ -483,23 +499,20 @@ module RailsActiveMcp
         warn "Rails loaded: #{rails_loaded}"
         warn "Working directory: #{project_path}"
 
-        if rails_load_error
-          warn "Rails load error: #{rails_load_error.class.name}: #{rails_load_error.message}"
-        end
+        warn "Rails load error: #{rails_load_error.class.name}: #{rails_load_error.message}" if rails_load_error
 
         server = RailsActiveMcp::Sdk::Server.new
         server.run_stdio
       rescue Interrupt
-        warn "Server interrupted by user"
-        exit(0)
+        warn 'Server interrupted by user'
       rescue LoadError => e
-        puts "FATAL: MCP SDK not available: #{e.message}"
-        puts "Please install the MCP gem: gem install mcp"
-        exit(1)
+        warn "FATAL: MCP SDK not available: #{e.message}"
+        warn 'Please install the MCP gem: gem install mcp'
+        raise Thor::Error, "MCP SDK not available: #{e.message}"
       rescue StandardError => e
-        puts "FATAL: Server startup failed: #{e.message}"
-        puts e.backtrace.join("\n") if ENV['RAILS_MCP_DEBUG']
-        exit(1)
+        warn "FATAL: Server startup failed: #{e.message}"
+        warn e.backtrace.join("\n") if ENV['RAILS_MCP_DEBUG']
+        raise Thor::Error, "Server startup failed: #{e.message}"
       end
     end
   end

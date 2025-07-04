@@ -122,7 +122,7 @@ module RailsActiveMcp
       return unless File.exist?(global_config_file)
 
       load_json_config(global_config_file)
-    rescue => e
+    rescue StandardError => e
       warn "Warning: Failed to load global config from #{global_config_file}: #{e.message}" if ENV['RAILS_MCP_DEBUG']
     end
 
@@ -134,7 +134,7 @@ module RailsActiveMcp
       return unless File.exist?(project_config_file)
 
       load_json_config(project_config_file)
-    rescue => e
+    rescue StandardError => e
       warn "Warning: Failed to load project config from #{project_config_file}: #{e.message}" if ENV['RAILS_MCP_DEBUG']
     end
 
@@ -185,32 +185,60 @@ module RailsActiveMcp
     # Merge configuration from hash
     def merge_hash!(hash)
       hash.each do |key, value|
-        case key.to_sym
-        when :safe_mode
-          @safe_mode = value if [true, false].include?(value)
-        when :command_timeout
-          @command_timeout = value if value.is_a?(Numeric) && value > 0
-        when :log_level
-          log_level_sym = value.to_sym if value.respond_to?(:to_sym)
-          @log_level = log_level_sym if %i[debug info warn error].include?(log_level_sym)
-        when :enable_logging
-          @enable_logging = value if [true, false].include?(value)
-        when :max_results
-          @max_results = value if value.is_a?(Numeric) && value > 0
-        when :log_executions
-          @log_executions = value if [true, false].include?(value)
-        when :audit_file
-          @audit_file = value.to_s if value
-        when :enabled
-          @enabled = value if [true, false].include?(value)
-        when :allowed_commands
-          @allowed_commands = value if value.is_a?(Array)
-        when :custom_safety_patterns
-          @custom_safety_patterns = value if value.is_a?(Array)
-        when :allowed_models
-          @allowed_models = value if value.is_a?(Array)
-        end
+        set_config_value(key.to_sym, value)
       end
+    end
+
+    # Set individual configuration value with validation
+    def set_config_value(key, value)
+      case key
+      when :safe_mode, :enable_logging, :log_executions, :enabled
+        set_boolean_value(key, value)
+      when :command_timeout, :max_results
+        set_numeric_value(key, value)
+      when :log_level
+        assign_log_level_value(value)
+      when :audit_file
+        set_string_value(key, value)
+      when :allowed_commands, :custom_safety_patterns, :allowed_models
+        set_array_value(key, value)
+      end
+    end
+
+    # Set boolean configuration values
+    def set_boolean_value(key, value)
+      return unless [true, false].include?(value)
+
+      instance_variable_set("@#{key}", value)
+    end
+
+    # Set numeric configuration values
+    def set_numeric_value(key, value)
+      return unless value.is_a?(Numeric) && value > 0
+
+      instance_variable_set("@#{key}", value)
+    end
+
+    # Set log level with validation
+    def assign_log_level_value(value)
+      return unless value.respond_to?(:to_sym)
+
+      log_level_sym = value.to_sym
+      @log_level = log_level_sym if %i[debug info warn error].include?(log_level_sym)
+    end
+
+    # Set string configuration values
+    def set_string_value(key, value)
+      return unless value
+
+      instance_variable_set("@#{key}", value.to_s)
+    end
+
+    # Set array configuration values
+    def set_array_value(key, value)
+      return unless value.is_a?(Array)
+
+      instance_variable_set("@#{key}", value)
     end
 
     # Merge configuration from another Configuration object
@@ -248,7 +276,7 @@ module RailsActiveMcp
     def apply_env_string(env_var, instance_var, valid_values = nil)
       return unless ENV[env_var]
 
-      value = ENV[env_var]
+      value = ENV.fetch(env_var, nil)
       if valid_values
         value_sym = value.to_sym
         instance_variable_set(instance_var, value_sym) if valid_values.include?(value)

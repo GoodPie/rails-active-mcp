@@ -8,22 +8,16 @@ Gem::Specification.new do |spec|
   spec.authors = ['Brandyn Britton']
   spec.email = ['brandynbb96@gmail.com']
 
-  spec.summary = 'Globally installable, secure Rails console access via Model Context Protocol (MCP)'
+  spec.summary = 'Modern, globally installable Rails console access via Model Context Protocol (MCP)'
   spec.description = <<~DESC
     Rails Active MCP enables secure Rails console access through Model Context Protocol (MCP)#{' '}
     for AI agents and development tools like Claude Desktop. Install globally and use with any#{' '}
     Rails project through auto-detection. Provides safe database querying, model introspection,#{' '}
     and code execution with comprehensive safety checks and audit logging.
 
-    BREAKING CHANGES in v3.0+:
-    • Removed backward compatibility with legacy stdio mode
-    • Now requires explicit Thor CLI commands (start, generate_config, validate_project)
-    • Simplified configuration and logging system
-    • No longer supports running without command arguments
-
     Features include:
     • Global installation with automatic Rails project detection
-    • Thor-based CLI with comprehensive help system
+    • Modern Thor-based CLI with comprehensive help system
     • Safe Ruby code execution with configurable safety checks
     • Read-only database query tools with result limiting
     • Rails model introspection (schema, associations, validations)
@@ -31,11 +25,13 @@ Gem::Specification.new do |spec|
     • Environment-specific configuration presets
     • Comprehensive audit logging and monitoring
     • Claude Desktop integration out of the box
+    • JSON configuration with hierarchical loading
+    • Environment variable support for all settings
   DESC
 
   spec.homepage = 'https://github.com/goodpie/rails-active-mcp'
   spec.license = 'MIT'
-  spec.required_ruby_version = '>= 3.1.0'
+  spec.required_ruby_version = '>= 3.3.0'
 
   spec.metadata = {
     'homepage_uri' => spec.homepage,
@@ -67,9 +63,9 @@ Gem::Specification.new do |spec|
   spec.executables = ['rails-active-mcp-server']
   spec.require_paths = ['lib']
 
-  # Runtime dependencies - more flexible Rails version support
+  # Runtime dependencies - modern versions only
   spec.add_dependency 'concurrent-ruby', '~> 1.3'
-  spec.add_dependency 'rails', '>= 6.1', '< 9.0'
+  spec.add_dependency 'rails', '>= 7.0', '< 9.0'
 
   # MCP SDK - Core protocol implementation
   spec.add_dependency 'mcp', '~> 0.1.0'
@@ -78,20 +74,20 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'thor', '~> 1.3'
 
   # Core dependencies
-  spec.add_dependency 'json', '~> 2.0'
-  spec.add_dependency 'rack', '>= 2.0', '< 4.0'
+  spec.add_dependency 'json', '~> 2.7'
+  spec.add_dependency 'rack', '~> 3.0'
   spec.add_dependency 'timeout', '~> 0.4'
   spec.add_dependency 'webrick', '~> 1.8'
 
-  # Development dependencies - keep versions consistent with Gemfile
-  spec.add_development_dependency 'colorize', '~> 0.8'
-  spec.add_development_dependency 'factory_bot_rails', '~> 6.0'
-  spec.add_development_dependency 'faker', '~> 2.19'
-  spec.add_development_dependency 'rspec', '~> 3.1'
-  spec.add_development_dependency 'rspec-rails', '~> 6.0'
+  # Development dependencies - latest stable versions
+  spec.add_development_dependency 'colorize', '~> 1.1'
+  spec.add_development_dependency 'factory_bot_rails', '~> 6.4'
+  spec.add_development_dependency 'faker', '~> 3.5'
+  spec.add_development_dependency 'rspec', '~> 3.13'
+  spec.add_development_dependency 'rspec-rails', '~> 7.1'
   spec.add_development_dependency 'rubocop', '~> 1.77'
   spec.add_development_dependency 'rubocop-rails', '~> 2.32'
-  spec.add_development_dependency 'rubocop-rspec', '~> 3.0'
+  spec.add_development_dependency 'rubocop-rspec', '~> 3.2'
   spec.add_development_dependency 'sqlite3', '~> 2.7'
 
   # Post-install message to help users get started
@@ -110,7 +106,7 @@ Gem::Specification.new do |spec|
     • rails-active-mcp-server start --auto-detect --safe-mode  # Auto-detect with safety
 
     📚 Documentation: #{spec.homepage}#readme
-    🐛 Issues: #{spec.homepage}/issues 
+    🐛 Issues: #{spec.homepage}/issues#{' '}
     💬 Discussions: #{spec.homepage}/discussions
 
     Follow the project: ⭐ #{spec.homepage}

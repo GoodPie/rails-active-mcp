@@ -11,8 +11,11 @@ group :development, :test do
   gem 'byebug'
   gem 'database_cleaner-active_record', '~> 2.1'
   gem 'factory_bot_rails', '~> 6.0'
+  gem 'mcp', '~> 0.1.0' # Official MCP Ruby SDK for migration
   gem 'rspec', '~> 3.1'
   gem 'rspec-rails'
+  gem 'simplecov', '~> 0.22'
+  gem 'sprockets-rails' # Required for Rails 7+
   gem 'sqlite3', '~> 2.7'
   gem 'timecop', '~> 0.9.8'
   gem 'webmock', '~> 3.19'
@@ -25,11 +28,3 @@ group :development do
   gem 'rubocop-rspec'
   gem 'yard'
 end
-
-group :development, :test do
-  gem 'simplecov', '~> 0.22'
-# For testing the gem in a Rails app
-gem 'sprockets-rails' # Required for Rails 7+
-
-# Official MCP Ruby SDK for migration
-gem 'mcp', '~> 0.1.0'
