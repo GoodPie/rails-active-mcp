@@ -10,24 +10,34 @@ module RailsActiveMcp
     def self.find_rails_root(start_dir = Dir.pwd)
       current_dir = File.expand_path(start_dir)
 
-      # Look for Gemfile and config/environment.rb up to 5 levels up
-      5.times do
-        gemfile_path = File.join(current_dir, 'Gemfile')
-        config_path = File.join(current_dir, 'config', 'environment.rb')
+      # Validate starting directory exists and is readable
+      unless File.directory?(current_dir) && File.readable?(current_dir)
+        return nil
+      end
 
-        return current_dir if File.exist?(gemfile_path) && File.exist?(config_path)
+      # Traverse upward until we find Rails project or hit filesystem root
+      loop do
+        return current_dir if rails_project?(current_dir)
 
         parent_dir = File.dirname(current_dir)
-        break if parent_dir == current_dir # reached root
+        break if parent_dir == current_dir # Reached filesystem root
 
         current_dir = parent_dir
+
+        # Safety check: ensure we can read the parent directory
+        break unless File.readable?(current_dir)
       end
 
       nil
     end
 
+    # Enhanced Rails project root detection (alias for consistency)
+    def self.find_rails_project_root(start_dir = Dir.pwd)
+      find_rails_root(start_dir)
+    end
+
     def self.rails_project?(path)
-      return false unless File.directory?(path)
+      return false unless File.directory?(path) && File.readable?(path)
 
       # Primary indicator: Rails application file
       rails_app_rb = File.join(path, 'config', 'application.rb')
@@ -36,11 +46,85 @@ module RailsActiveMcp
       # Secondary indicator: Gemfile with Rails dependency
       gemfile_path = File.join(path, 'Gemfile')
       if File.exist?(gemfile_path)
-        gemfile_content = File.read(gemfile_path)
-        return true if gemfile_content.match?(/gem\s+['"]rails['"]/)
+        begin
+          gemfile_content = File.read(gemfile_path)
+          return true if gemfile_content.match?(/gem\s+['"]rails['"]/)
+        rescue Errno::EACCES, Errno::ENOENT
+          # Cannot read Gemfile, continue with other checks
+        end
+      end
+
+      # Additional indicators for edge cases
+      # Check for config/routes.rb (Rails-specific routing file)
+      routes_rb = File.join(path, 'config', 'routes.rb')
+      return true if File.exist?(routes_rb)
+
+      # Check for app/ directory structure (typical Rails layout)
+      app_dir = File.join(path, 'app')
+      if File.directory?(app_dir)
+        # Look for typical Rails subdirectories
+        rails_subdirs = %w[models views controllers]
+        rails_subdirs_found = rails_subdirs.count do |subdir|
+          File.directory?(File.join(app_dir, subdir))
+        end
+        return true if rails_subdirs_found >= 2
+      end
+
+      # Check for Rakefile with Rails tasks
+      rakefile_path = File.join(path, 'Rakefile')
+      if File.exist?(rakefile_path)
+        begin
+          rakefile_content = File.read(rakefile_path)
+          return true if rakefile_content.match?(/require.*rails/i)
+        rescue Errno::EACCES, Errno::ENOENT
+          # Cannot read Rakefile, not a strong indicator anyway
+        end
       end
 
       false
+    end
+
+    # Determine Rails project path based on CLI options with robust error handling
+    def self.determine_rails_path(options = {})
+      if options[:project]
+        # Explicit path provided - validate and expand it
+        explicit_path = validate_project_path(options[:project])
+        return explicit_path if explicit_path && rails_project?(explicit_path)
+
+        # Path provided but not a Rails project
+        return nil
+      elsif options[:auto_detect]
+        # Search upward from current directory
+        find_rails_project_root(Dir.pwd)
+      else
+        # Default behavior: current directory if Rails project, otherwise search upward
+        current_dir = Dir.pwd
+        if rails_project?(current_dir)
+          current_dir
+        else
+          find_rails_project_root(current_dir)
+        end
+      end
+    end
+
+    # Validate and expand project path with security checks
+    def self.validate_project_path(path)
+      return nil if path.nil? || path.empty?
+
+      begin
+        expanded_path = File.expand_path(path)
+
+        # Check if path exists and is a directory
+        return nil unless File.exist?(expanded_path) && File.directory?(expanded_path)
+
+        # Check if path is readable
+        return nil unless File.readable?(expanded_path)
+
+        expanded_path
+      rescue ArgumentError, SystemCallError
+        # Invalid path or permission issues
+        nil
+      end
     end
 
     def self.load_rails_environment(project_path)
@@ -260,20 +344,8 @@ module RailsActiveMcp
     private
 
     def determine_project_path
-      if options[:project]
-        # Explicit path provided
-        File.expand_path(options[:project])
-      elsif options[:auto_detect]
-        # Search upward from current directory
-        ProjectUtils.find_rails_root(Dir.pwd)
-      else
-        # Default: current directory if it's a Rails project, otherwise search upward
-        if ProjectUtils.rails_project?(Dir.pwd)
-          Dir.pwd
-        else
-          ProjectUtils.find_rails_root(Dir.pwd)
-        end
-      end
+      # Use enhanced project detection with robust error handling
+      ProjectUtils.determine_rails_path(options)
     end
 
     def build_configuration
