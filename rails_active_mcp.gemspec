@@ -15,8 +15,15 @@ Gem::Specification.new do |spec|
     Rails project through auto-detection. Provides safe database querying, model introspection,#{' '}
     and code execution with comprehensive safety checks and audit logging.
 
+    BREAKING CHANGES in v3.0+:
+    • Removed backward compatibility with legacy stdio mode
+    • Now requires explicit Thor CLI commands (start, generate_config, validate_project)
+    • Simplified configuration and logging system
+    • No longer supports running without command arguments
+
     Features include:
     • Global installation with automatic Rails project detection
+    • Thor-based CLI with comprehensive help system
     • Safe Ruby code execution with configurable safety checks
     • Read-only database query tools with result limiting
     • Rails model introspection (schema, associations, validations)
