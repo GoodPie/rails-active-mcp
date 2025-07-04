@@ -282,63 +282,42 @@ module RailsActiveMcp
       Examples:
       \x5 rails-active-mcp-server validate_project
       \x5 rails-active-mcp-server validate_project --project /path/to/rails/app
+      \x5 rails-active-mcp-server validate_project --json  # Output as JSON
     LONGDESC
+
+    option :json, type: :boolean, desc: 'Output validation results as JSON'
 
     def validate_project
       project_path = determine_project_path
 
       unless project_path
-        say "Error: No Rails project found.", :red
-        say "Use --project PATH or --auto-detect, or run from within a Rails project."
-        exit 1
-      end
-
-      say "Validating Rails project: #{project_path}", :blue
-      say ""
-
-      # Validate Rails structure
-      if ProjectUtils.rails_project?(project_path)
-        say "✓ Valid Rails project structure", :green
-      else
-        say "✗ Invalid Rails project structure", :red
-        exit 1
-      end
-
-      # Check Gemfile
-      gemfile_path = File.join(project_path, 'Gemfile')
-      if File.exist?(gemfile_path)
-        say "✓ Gemfile found", :green
-
-        gemfile_content = File.read(gemfile_path)
-        if gemfile_content.match?(/gem\s+['"]rails['"]/)
-          say "✓ Rails dependency found in Gemfile", :green
+        if options[:json]
+          puts JSON.pretty_generate({
+            valid: false,
+            error: "No Rails project found",
+            message: "Use --project PATH or --auto-detect, or run from within a Rails project."
+          })
         else
-          say "⚠ No explicit Rails dependency in Gemfile", :yellow
+          say "Error: No Rails project found.", :red
+          say "Use --project PATH or --auto-detect, or run from within a Rails project."
         end
-      else
-        say "✗ No Gemfile found", :red
+        exit 1
       end
 
-      # Check database configuration
-      database_config = File.join(project_path, 'config', 'database.yml')
-      if File.exist?(database_config)
-        say "✓ Database configuration found", :green
+      # Use the ProjectValidator for comprehensive validation
+      validator = RailsActiveMcp::ProjectValidator.new(project_path)
+      results = validator.validate
+
+      if options[:json]
+        # Output JSON format
+        puts validator.validate_json
       else
-        say "⚠ No database configuration found", :yellow
+        # Output human-readable format
+        display_validation_results(results)
       end
 
-      # Test Rails environment loading
-      say "Testing Rails environment loading...", :blue
-      rails_loaded, rails_error = ProjectUtils.load_rails_environment(project_path)
-
-      if rails_loaded
-        say "✓ Rails environment loads successfully", :green
-      else
-        say "✗ Rails environment failed to load: #{rails_error&.message}", :red
-      end
-
-      say ""
-      say "Project validation complete!", :green
+      # Exit with error code if validation failed
+      exit 1 unless results[:valid]
     end
 
     private
@@ -439,6 +418,43 @@ module RailsActiveMcp
         say "  ✓ CLI options: #{cli_options.join(', ')}", :green
       else
         say "  ✗ CLI options: none provided", :yellow
+      end
+    end
+
+    def display_validation_results(results)
+      say "Validating Rails project: #{results[:project_path]}", :blue
+      say ""
+
+      # Display each validation check
+      results[:checks].each do |check|
+        case check[:status]
+        when :ok
+          say "✓ #{check[:name]}: #{check[:message]}", :green
+        when :warning
+          say "⚠ #{check[:name]}: #{check[:message]}", :yellow
+        when :error
+          say "✗ #{check[:name]}: #{check[:message]}", :red
+        end
+      end
+
+      say ""
+
+      # Display summary
+      summary = results[:summary]
+      say "Validation Summary:", :cyan
+      say "  Total checks: #{summary[:total_checks]}"
+      say "  Passed: #{summary[:passed]}", :green
+      say "  Warnings: #{summary[:warnings]}", :yellow if summary[:warnings] > 0
+      say "  Errors: #{summary[:errors]}", :red if summary[:errors] > 0
+
+      say ""
+      case summary[:overall_status]
+      when 'passed'
+        say "✓ Project validation passed!", :green
+      when 'passed_with_warnings'
+        say "⚠ Project validation passed with warnings", :yellow
+      when 'failed'
+        say "✗ Project validation failed", :red
       end
     end
 
