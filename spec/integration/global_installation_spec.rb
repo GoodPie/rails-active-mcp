@@ -191,7 +191,7 @@ RSpec.describe 'Global Installation Integration' do
 
       expect do
         cli.invoke(:start, [], { project: invalid_path })
-      end.to raise_error(SystemExit)
+      end.to raise_error(Thor::Error)
     end
 
     it 'processes CLI options correctly' do
@@ -411,14 +411,41 @@ RSpec.describe 'Global Installation Integration' do
       require_relative 'boot'
       # Mock Rails application for testing
 
+      module Rails
+        def self.application
+          @application ||= TestApp::Application.new
+        end
+
+        def self.env
+          @env ||= 'test'
+        end
+      end
+
       module TestApp
         class Application
-          def self.load_defaults(version)
+          def initialize
+            @initialized = false
+          end
+
+          def initialize!
+            @initialized = true
+            self
+          end
+
+          def initialized?
+            @initialized
+          end
+
+          def load_defaults(version)
             # Mock method
           end
 
-          def self.config
+          def config
             @config ||= OpenStruct.new
+          end
+
+          def routes
+            @routes ||= OpenStruct.new(draw: proc { |&block| block.call if block })
           end
         end
       end

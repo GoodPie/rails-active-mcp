@@ -83,6 +83,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'colorize', '~> 1.1'
   spec.add_development_dependency 'factory_bot_rails', '~> 6.4'
   spec.add_development_dependency 'faker', '~> 3.5'
+  spec.add_development_dependency 'ostruct', '~> 0.6'
   spec.add_development_dependency 'rspec', '~> 3.13'
   spec.add_development_dependency 'rspec-rails', '~> 7.1'
   spec.add_development_dependency 'rubocop', '~> 1.77'

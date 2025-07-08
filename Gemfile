@@ -10,21 +10,17 @@ gem 'rails', '>= 7.0'
 group :development, :test do
   gem 'byebug'
   gem 'database_cleaner-active_record', '~> 2.1'
-  gem 'factory_bot_rails', '~> 6.0'
   gem 'mcp', '~> 0.1.0' # Official MCP Ruby SDK for migration
-  gem 'rspec', '~> 3.1'
-  gem 'rspec-rails'
   gem 'simplecov', '~> 0.22'
   gem 'sprockets-rails' # Required for Rails 7+
-  gem 'sqlite3', '~> 2.7'
   gem 'timecop', '~> 0.9.8'
   gem 'webmock', '~> 3.19'
 end
 
 group :development do
   gem 'redcarpet' # For YARD markdown support
-  gem 'rubocop', '~> 1.77'
+  gem 'yard'
+  gem 'rubocop', '~> 1.7'
   gem 'rubocop-rails', '~> 2.32'
   gem 'rubocop-rspec'
-  gem 'yard'
 end
