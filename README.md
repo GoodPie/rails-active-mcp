@@ -1,6 +1,10 @@
+Note: This is just a personal project and while it works for the most part, I am still developing it and actively trying to make it a bit more useful for my uses.
+
 # Rails Active MCP
 
 A Ruby gem that provides secure Rails console access through Model Context Protocol (MCP) for AI agents and development tools like Claude Desktop. Built using the official MCP Ruby SDK for professional protocol handling and future-proof compatibility.
+
+
 
 ## Features
 
