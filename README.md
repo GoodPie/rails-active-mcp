@@ -1,3 +1,5 @@
+[![Gem Version](https://badge.fury.io/rb/rails-active-mcp.svg?icon=si%3Arubygems)](https://badge.fury.io/rb/rails-active-mcp)
+
 Note: This is just a personal project and while it works for the most part, I am still developing it and actively trying to make it a bit more useful for my uses.
 
 # Rails Active MCP
