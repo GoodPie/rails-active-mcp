@@ -28,8 +28,10 @@ end
 
 group :development, :test do
   gem 'simplecov', '~> 0.22'
+end
+
 # For testing the gem in a Rails app
 gem 'sprockets-rails' # Required for Rails 7+
 
-# Official MCP Ruby SDK for migration
-gem 'mcp', '~> 0.1.0'
+# Official MCP Ruby SDK (MCP 2025-11-25 spec)
+gem 'mcp', '~> 0.4.0'

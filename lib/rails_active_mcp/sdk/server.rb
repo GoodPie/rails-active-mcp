@@ -124,6 +124,8 @@ module RailsActiveMcp
       def configure_mcp
         # Configure MCP SDK with Rails-specific handlers
         MCP.configure do |config|
+          # Set protocol version to MCP 2025-11-25 specification
+          config.protocol_version = '2025-11-25'
           config.exception_reporter = method(:handle_rails_exception)
           config.instrumentation_callback = method(:log_mcp_calls)
         end

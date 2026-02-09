@@ -54,12 +54,13 @@ module RailsActiveMcp
 
             if result[:success]
               MCP::Tool::Response.new([
-                                        { type: 'text', text: format_success_result(result) }
-                                      ])
+                { type: 'text', text: format_success_result(result) }
+              ])
             else
-              MCP::Tool::Response.new([
-                                        { type: 'text', text: format_error_result(result) }
-                                      ])
+              MCP::Tool::Response.new(
+                [{ type: 'text', text: format_error_result(result) }],
+                is_error: true
+              )
             end
           rescue RailsActiveMcp::SafetyError => e
             error_response("Safety check failed: #{e.message}")
@@ -91,9 +92,10 @@ module RailsActiveMcp
         end
 
         def self.error_response(message)
-          MCP::Tool::Response.new([
-                                    { type: 'text', text: message }
-                                  ])
+          MCP::Tool::Response.new(
+            [{ type: 'text', text: message }],
+            is_error: true
+          )
         end
       end
     end

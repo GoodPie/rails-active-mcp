@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2025-12-01
+
+### Changed
+
+- **BREAKING**: Updated to MCP Ruby SDK v0.4.0 (was v0.1.0)
+- **BREAKING**: Requires Ruby >= 3.2.0 (was >= 3.1.0)
+- **BREAKING**: Updated to MCP protocol version 2025-11-25
+- Tool error responses now include `is_error: true` flag per MCP 2025-11-25 specification
+
+### Fixed
+
+- Input validation errors are now returned as Tool Execution Errors instead of Protocol Errors (MCP 2025-11-25 compliance)
+
+### Migration Guide
+
+For users upgrading from v2.x:
+
+1. Ensure you are running Ruby 3.2.0 or higher
+2. Run `bundle update rails-active-mcp` to update the gem and its dependencies
+3. No configuration changes are required
+
 ## [2.0.0] - 2025-01-15
 
 ### Added

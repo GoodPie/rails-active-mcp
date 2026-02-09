@@ -26,7 +26,7 @@ Gem::Specification.new do |spec|
 
   spec.homepage = 'https://github.com/goodpie/rails-active-mcp'
   spec.license = 'MIT'
-  spec.required_ruby_version = '>= 3.1.0'
+  spec.required_ruby_version = '>= 3.2.0'
 
   spec.metadata = {
     'homepage_uri' => spec.homepage,
@@ -62,8 +62,8 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'concurrent-ruby', '~> 1.3'
   spec.add_dependency 'rails', '>= 6.1', '< 9.0'
 
-  # MCP SDK - Core protocol implementation
-  spec.add_dependency 'mcp', '~> 0.1.0'
+  # MCP SDK - Core protocol implementation (MCP 2025-11-25 spec)
+  spec.add_dependency 'mcp', '~> 0.4.0'
 
   # Core dependencies
   spec.add_dependency 'json', '~> 2.0'
