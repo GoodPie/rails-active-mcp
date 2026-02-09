@@ -31,4 +31,4 @@ end
 gem 'sprockets-rails' # Required for Rails 7+
 
 # Official MCP Ruby SDK for migration
-gem 'mcp', '~> 0.1.0'
+gem 'mcp', '~> 0.4.0'

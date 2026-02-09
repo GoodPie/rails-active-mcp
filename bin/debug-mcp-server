@@ -114,7 +114,7 @@ class McpDebugger
 
     # Create a simple test script
     test_script = <<~SCRIPT
-      echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' | bundle exec rails-active-mcp-server stdio
+      echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' | bundle exec rails-active-mcp-server stdio
     SCRIPT
 
     puts 'Testing server initialization...'

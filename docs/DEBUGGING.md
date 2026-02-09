@@ -204,7 +204,7 @@ bundle exec rails-active-mcp-server http --port 8080
 3. Verify server process starts: `ps aux | grep rails-active-mcp`
 4. Test basic JSON-RPC response:
    ```bash
-   echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' | bundle exec rails-active-mcp-server stdio
+   echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' | bundle exec rails-active-mcp-server stdio
    ```
 
 ## Logging Implementation
@@ -249,7 +249,7 @@ end
 
 ```bash
 # Test initialize method
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' | bundle exec rails-active-mcp-server stdio
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' | bundle exec rails-active-mcp-server stdio
 ```
 
 Expected response:
@@ -258,7 +258,7 @@ Expected response:
   "jsonrpc":"2.0",
   "id":1,
   "result": {
-    "protocolVersion":"2025-06-18",
+    "protocolVersion":"2025-11-25",
     "capabilities":{"tools":{},"resources":{}},
     "serverInfo":{"name":"rails-active-mcp","version":"..."}
   }
