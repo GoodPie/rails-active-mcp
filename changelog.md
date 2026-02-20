@@ -7,22 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- CI: Expanded Rails matrix to include 8.0 and 8.1; added corresponding gemfiles.
+- CI: Output JUnit XML via rspec_junit_formatter and ensure tmp/ exists for artifacts.
+- CI: Fixed gem install step to use the correct hyphenated artifact name (rails-active-mcp-*.gem).
+
 ## [3.1.0] - 2026-02-09
 
 ### Changed
 
-- Updated MCP Ruby SDK from v0.4.0 to v0.6.0
+- Updated MCP Ruby SDK from v0.4.0 to v0.7.0
 - Added server metadata (websiteUrl, description) for improved discoverability in Claude Desktop
 - Cleaned up duplicate gem declarations in Gemfile
+- **BREAKING**: Removed Rails < 7.0 support
+- Added Rails 8 support
 
 ### Internal
 
-- Leveraged MCP SDK v0.6.0 icon optimization (omit when nil/empty)
+- Leveraged MCP SDK v0.7.0 (includes v0.6.0) icon optimization (omit when nil/empty)
 - Aligned with MCP SDK v0.5.0 serverInfo enhancements
 
 ### Migration
 
-No breaking changes. Simply run `bundle update mcp` to upgrade.
+Run `bundle update mcp` to upgrade.
 
 ## [3.0.0] - 2025-12-01
 
@@ -120,35 +127,35 @@ For users upgrading from v1.x:
 
 - Initial release of Rails Active MCP gem
 - Core MCP tools for Rails console access:
-    - `console_execute`: Execute Ruby code with safety checks
-    - `safe_query`: Execute read-only database queries
-    - `dry_run`: Analyze code safety without execution
-    - `model_info`: Get model schema and associations
+  - `console_execute`: Execute Ruby code with safety checks
+  - `safe_query`: Execute read-only database queries
+  - `dry_run`: Analyze code safety without execution
+  - `model_info`: Get model schema and associations
 - Advanced safety checking system:
-    - Pattern-based dangerous operation detection
-    - Configurable safety levels (critical, high, medium, low)
-    - Read-only operation detection
-    - Custom safety pattern support
+  - Pattern-based dangerous operation detection
+  - Configurable safety levels (critical, high, medium, low)
+  - Read-only operation detection
+  - Custom safety pattern support
 - Comprehensive configuration system:
-    - Environment-specific presets (production, development, test)
-    - Model access control (allow/block lists)
-    - Timeout and result limiting
-    - Audit logging configuration
+  - Environment-specific presets (production, development, test)
+  - Model access control (allow/block lists)
+  - Timeout and result limiting
+  - Audit logging configuration
 - Rails integration:
-    - Rails engine for automatic setup
-    - Generator for easy installation
-    - Rake tasks for management and testing
-    - Active MCP integration
+  - Rails engine for automatic setup
+  - Generator for easy installation
+  - Rake tasks for management and testing
+  - Active MCP integration
 - Security features:
-    - Execution timeout protection
-    - Result size limiting
-    - Complete audit logging
-    - Environment-based safety modes
+  - Execution timeout protection
+  - Result size limiting
+  - Complete audit logging
+  - Environment-based safety modes
 - Console executor with:
-    - Output capturing
-    - Error handling
-    - Execution timing
-    - Context isolation
+  - Output capturing
+  - Error handling
+  - Execution timing
+  - Context isolation
 
 ### Security
 
