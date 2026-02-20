@@ -8,9 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- CI: Expanded Rails matrix to include 8.0 and 8.1; added corresponding gemfiles.
-- CI: Output JUnit XML via rspec_junit_formatter and ensure tmp/ exists for artifacts.
-- CI: Fixed gem install step to use the correct hyphenated artifact name (rails-active-mcp-*.gem).
 
 ## [3.1.0] - 2026-02-09
 
@@ -21,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cleaned up duplicate gem declarations in Gemfile
 - **BREAKING**: Removed Rails < 7.0 support
 - Added Rails 8 support
+- CI: Expanded Rails matrix to include 8.0 and 8.1; added corresponding gemfiles.
+- CI: Output JUnit XML via rspec_junit_formatter and ensure tmp/ exists for artifacts.
+- CI: Fixed gem install step to use the correct hyphenated artifact name (rails-active-mcp-*.gem).
+
 
 ### Internal
 
