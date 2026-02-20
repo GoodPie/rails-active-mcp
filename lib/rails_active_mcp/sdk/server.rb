@@ -31,7 +31,11 @@ module RailsActiveMcp
           name: 'rails-active-mcp',
           version: RailsActiveMcp::VERSION,
           tools: discover_tools,
-          server_context: server_context
+          server_context: server_context,
+          server_info: {
+            websiteUrl: 'https://github.com/goodpie/rails-active-mcp',
+            description: 'Secure Rails console access via Model Context Protocol (MCP) for AI agents'
+          }
         )
 
         # Set up server handlers

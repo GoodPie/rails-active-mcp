@@ -63,7 +63,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'rails', '>= 6.1', '< 9.0'
 
   # MCP SDK - Core protocol implementation (MCP 2025-11-25 spec)
-  spec.add_dependency 'mcp', '~> 0.4.0'
+  spec.add_dependency 'mcp', '~> 0.6.0'
 
   # Core dependencies
   spec.add_dependency 'json', '~> 2.0'

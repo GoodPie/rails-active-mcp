@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # Service for running tests
+  test:
+    build: .
+    volumes:
+      - .:/app
+      - bundle_cache:/usr/local/bundle
+    environment:
+      - RAILS_ENV=test
+    command: bundle exec rspec
+    stdin_open: true
+    tty: true
+
+  # Service for the MCP server (for Claude Desktop integration)
+  mcp-server:
+    build: .
+    volumes:
+      - .:/app
+      - bundle_cache:/usr/local/bundle
+    working_dir: /app
+    stdin_open: true
+    tty: false
+    command: bundle exec rails-active-mcp-server
+    environment:
+      - RAILS_ENV=development
+
+  # Service for example Rails app
+  example-app:
+    build: .
+    volumes:
+      - .:/app
+      - bundle_cache:/usr/local/bundle
+      - example_db:/app/example/db
+    working_dir: /app/example
+    ports:
+      - "3000:3000"
+    environment:
+      - RAILS_ENV=development
+    command: bundle exec rails server -b 0.0.0.0
+    stdin_open: true
+    tty: true
+
+  # Interactive shell for development
+  dev:
+    build: .
+    volumes:
+      - .:/app
+      - bundle_cache:/usr/local/bundle
+    environment:
+      - RAILS_ENV=development
+    command: bash
+    stdin_open: true
+    tty: true
+
+volumes:
+  bundle_cache:
+  example_db:

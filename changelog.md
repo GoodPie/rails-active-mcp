@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-02-09
+
+### Changed
+
+- Updated MCP Ruby SDK from v0.4.0 to v0.6.0
+- Added server metadata (websiteUrl, description) for improved discoverability in Claude Desktop
+- Cleaned up duplicate gem declarations in Gemfile
+
+### Internal
+
+- Leveraged MCP SDK v0.6.0 icon optimization (omit when nil/empty)
+- Aligned with MCP SDK v0.5.0 serverInfo enhancements
+
+### Migration
+
+No breaking changes. Simply run `bundle update mcp` to upgrade.
+
 ## [3.0.0] - 2025-12-01
 
 ### Changed
