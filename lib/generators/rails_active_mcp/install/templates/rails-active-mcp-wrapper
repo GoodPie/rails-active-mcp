@@ -2,52 +2,8 @@
 
 # Rails Active MCP Wrapper Script
 # This script ensures Rails Active MCP works reliably across different Ruby version managers
-
-# Function to detect Ruby version manager
-detect_ruby_manager() {
-    if command -v asdf >/dev/null 2>&1 && [ -f .tool-versions ]; then
-        echo "asdf"
-    elif command -v rbenv >/dev/null 2>&1 && [ -f .ruby-version ]; then
-        echo "rbenv"
-    elif command -v rvm >/dev/null 2>&1 && [ -f .rvmrc ]; then
-        echo "rvm"
-    else
-        echo "system"
-    fi
-}
-
-# Function to setup environment for different Ruby managers
-setup_ruby_environment() {
-    local manager=$1
-
-    case $manager in
-        "asdf")
-            if [ -n "$ASDF_DIR" ] && [ -f "$ASDF_DIR/asdf.sh" ]; then
-                source "$ASDF_DIR/asdf.sh"
-            elif [ -f "$HOME/.asdf/asdf.sh" ]; then
-                export ASDF_DIR="$HOME/.asdf"
-                source "$HOME/.asdf/asdf.sh"
-            fi
-            ;;
-        "rbenv")
-            if [ -n "$RBENV_ROOT" ] && [ -f "$RBENV_ROOT/bin/rbenv" ]; then
-                export PATH="$RBENV_ROOT/bin:$PATH"
-                eval "$(rbenv init - bash)"
-            elif [ -f "$HOME/.rbenv/bin/rbenv" ]; then
-                export PATH="$HOME/.rbenv/bin:$PATH"
-                eval "$(rbenv init - bash)"
-            elif command -v rbenv >/dev/null 2>&1; then
-                # Homebrew or other installations where rbenv is already in PATH
-                eval "$(rbenv init - bash)"
-            fi
-            ;;
-        "rvm")
-            if [ -f "$HOME/.rvm/scripts/rvm" ]; then
-                source "$HOME/.rvm/scripts/rvm"
-            fi
-            ;;
-    esac
-}
+# when launched from MCP hosts (Claude Desktop, Claude Code, etc.) which may not have
+# the user's shell profile loaded.
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -59,9 +15,54 @@ cd "$PROJECT_ROOT" || {
     exit 1
 }
 
-# Detect and setup Ruby environment
-RUBY_MANAGER=$(detect_ruby_manager)
-setup_ruby_environment "$RUBY_MANAGER"
+# Setup Ruby environment by adding version manager shims to PATH.
+# Shims are self-contained scripts that route to the correct Ruby version
+# without requiring full shell initialization (eval, source, etc.).
+# This works reliably even in non-interactive contexts like MCP hosts.
+setup_ruby_path() {
+    # rbenv: shims directory handles version switching
+    local rbenv_root="${RBENV_ROOT:-$HOME/.rbenv}"
+    if [ -d "$rbenv_root/shims" ]; then
+        export PATH="$rbenv_root/shims:$PATH"
+        return
+    fi
+
+    # asdf: shims directory handles version switching
+    local asdf_data="${ASDF_DATA_DIR:-$HOME/.asdf}"
+    if [ -d "$asdf_data/shims" ]; then
+        export PATH="$asdf_data/shims:$PATH"
+        return
+    fi
+
+    # mise (formerly rtx): shims directory
+    local mise_data="${MISE_DATA_DIR:-$HOME/.local/share/mise}"
+    if [ -d "$mise_data/shims" ]; then
+        export PATH="$mise_data/shims:$PATH"
+        return
+    fi
+
+    # rvm: requires sourcing but check for it
+    if [ -d "$HOME/.rvm/rubies" ]; then
+        if [ -f "$HOME/.rvm/scripts/rvm" ]; then
+            source "$HOME/.rvm/scripts/rvm"
+        fi
+        return
+    fi
+
+    # chruby: check common install locations
+    if [ -f /usr/local/share/chruby/chruby.sh ]; then
+        source /usr/local/share/chruby/chruby.sh
+        [ -f /usr/local/share/chruby/auto.sh ] && source /usr/local/share/chruby/auto.sh
+        return
+    fi
+    if [ -f /opt/homebrew/share/chruby/chruby.sh ]; then
+        source /opt/homebrew/share/chruby/chruby.sh
+        [ -f /opt/homebrew/share/chruby/auto.sh ] && source /opt/homebrew/share/chruby/auto.sh
+        return
+    fi
+}
+
+setup_ruby_path
 
 # Verify we have the necessary files
 if [ ! -f "Gemfile" ]; then
@@ -78,20 +79,11 @@ fi
 export RAILS_ENV="${RAILS_ENV:-development}"
 
 # Ensure we have the rails-active-mcp gem available
-if ! bundle list | grep -q "rails-active-mcp"; then
+if ! bundle list 2>/dev/null | grep -q "rails-active-mcp"; then
     echo "Error: rails-active-mcp gem not found in bundle" >&2
     echo "Please run: bundle install" >&2
     exit 1
 fi
 
 # Execute the Rails Active MCP server
-# Try bundle exec first, then fall back to direct execution
-if bundle exec rails-active-mcp-server "$@" 2>/dev/null; then
-    exit 0
-elif command -v rails-active-mcp-server >/dev/null 2>&1; then
-    exec rails-active-mcp-server "$@"
-else
-    echo "Error: Cannot find rails-active-mcp-server executable" >&2
-    echo "Please ensure the rails-active-mcp gem is properly installed" >&2
-    exit 1
-fi
+exec bundle exec rails-active-mcp-server "$@"
