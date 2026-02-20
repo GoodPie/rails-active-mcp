@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- CI: Expanded Rails matrix to include 8.0 and 8.1; added corresponding gemfiles.
+- CI: Output JUnit XML via rspec_junit_formatter and ensure tmp/ exists for artifacts.
+- CI: Fixed gem install step to use the correct hyphenated artifact name (rails-active-mcp-*.gem).
+
+## [3.1.0] - 2026-02-09
+
+### Changed
+
+- Updated MCP Ruby SDK from v0.4.0 to v0.7.0
+- Added server metadata (websiteUrl, description) for improved discoverability in Claude Desktop
+- Cleaned up duplicate gem declarations in Gemfile
+- **BREAKING**: Removed Rails < 7.0 support
+- Added Rails 8 support
+
+### Internal
+
+- Leveraged MCP SDK v0.7.0 (includes v0.6.0) icon optimization (omit when nil/empty)
+- Aligned with MCP SDK v0.5.0 serverInfo enhancements
+
+### Migration
+
+Run `bundle update mcp` to upgrade.
+
+## [3.0.0] - 2025-12-01
+
+### Changed
+
+- **BREAKING**: Updated to MCP Ruby SDK v0.4.0 (was v0.1.0)
+- **BREAKING**: Requires Ruby >= 3.2.0 (was >= 3.1.0)
+- **BREAKING**: Updated to MCP protocol version 2025-11-25
+- Tool error responses now include `is_error: true` flag per MCP 2025-11-25 specification
+
+### Fixed
+
+- Input validation errors are now returned as Tool Execution Errors instead of Protocol Errors (MCP 2025-11-25 compliance)
+
+### Migration Guide
+
+For users upgrading from v2.x:
+
+1. Ensure you are running Ruby 3.2.0 or higher
+2. Run `bundle update rails-active-mcp` to update the gem and its dependencies
+3. No configuration changes are required
+
 ## [2.0.0] - 2025-01-15
 
 ### Added
@@ -82,35 +127,35 @@ For users upgrading from v1.x:
 
 - Initial release of Rails Active MCP gem
 - Core MCP tools for Rails console access:
-    - `console_execute`: Execute Ruby code with safety checks
-    - `safe_query`: Execute read-only database queries
-    - `dry_run`: Analyze code safety without execution
-    - `model_info`: Get model schema and associations
+  - `console_execute`: Execute Ruby code with safety checks
+  - `safe_query`: Execute read-only database queries
+  - `dry_run`: Analyze code safety without execution
+  - `model_info`: Get model schema and associations
 - Advanced safety checking system:
-    - Pattern-based dangerous operation detection
-    - Configurable safety levels (critical, high, medium, low)
-    - Read-only operation detection
-    - Custom safety pattern support
+  - Pattern-based dangerous operation detection
+  - Configurable safety levels (critical, high, medium, low)
+  - Read-only operation detection
+  - Custom safety pattern support
 - Comprehensive configuration system:
-    - Environment-specific presets (production, development, test)
-    - Model access control (allow/block lists)
-    - Timeout and result limiting
-    - Audit logging configuration
+  - Environment-specific presets (production, development, test)
+  - Model access control (allow/block lists)
+  - Timeout and result limiting
+  - Audit logging configuration
 - Rails integration:
-    - Rails engine for automatic setup
-    - Generator for easy installation
-    - Rake tasks for management and testing
-    - Active MCP integration
+  - Rails engine for automatic setup
+  - Generator for easy installation
+  - Rake tasks for management and testing
+  - Active MCP integration
 - Security features:
-    - Execution timeout protection
-    - Result size limiting
-    - Complete audit logging
-    - Environment-based safety modes
+  - Execution timeout protection
+  - Result size limiting
+  - Complete audit logging
+  - Environment-based safety modes
 - Console executor with:
-    - Output capturing
-    - Error handling
-    - Execution timing
-    - Context isolation
+  - Output capturing
+  - Error handling
+  - Execution timing
+  - Context isolation
 
 ### Security
 

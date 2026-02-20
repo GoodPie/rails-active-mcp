@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # noinspection RubyResolve
 require 'spec_helper'
 
@@ -34,6 +36,22 @@ RSpec.describe RailsActiveMcp::SafetyChecker do
         expect(checker.safe?('system("rm -rf /")')).to be false
         expect(checker.safe?('exec("dangerous")')).to be false
       end
+    end
+  end
+
+  describe 'dynamic method dispatch' do
+    before { config.safe_mode = true }
+
+    it 'blocks send in safe mode' do
+      expect(checker.safe?('obj.send(:system, "cmd")')).to be false
+    end
+
+    it 'blocks __send__ in safe mode' do
+      expect(checker.safe?('obj.__send__(:exec, "cmd")')).to be false
+    end
+
+    it 'blocks public_send in safe mode' do
+      expect(checker.safe?('obj.public_send(:system, "cmd")')).to be false
     end
   end
 

@@ -55,7 +55,6 @@ RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
 
       content = File.read(initializer_path)
       expect(content).to include('RailsActiveMcp.configure')
-      expect(content).to include('config.allowed_commands')
       expect(content).to include('config.command_timeout')
       expect(content).to include('config.enable_logging')
       expect(content).to include('config.safe_mode')

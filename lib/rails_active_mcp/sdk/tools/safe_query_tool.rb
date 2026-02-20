@@ -65,9 +65,10 @@ module RailsActiveMcp
         end
 
         def self.error_response(message)
-          MCP::Tool::Response.new([
-                                    { type: 'text', text: message }
-                                  ])
+          MCP::Tool::Response.new(
+            [{ type: 'text', text: message }],
+            error: true
+          )
         end
       end
     end

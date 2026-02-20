@@ -26,7 +26,7 @@ Gem::Specification.new do |spec|
 
   spec.homepage = 'https://github.com/goodpie/rails-active-mcp'
   spec.license = 'MIT'
-  spec.required_ruby_version = '>= 3.1.0'
+  spec.required_ruby_version = '>= 3.2.0'
 
   spec.metadata = {
     'homepage_uri' => spec.homepage,
@@ -60,16 +60,15 @@ Gem::Specification.new do |spec|
 
   # Runtime dependencies - more flexible Rails version support
   spec.add_dependency 'concurrent-ruby', '~> 1.3'
-  spec.add_dependency 'rails', '>= 6.1', '< 9.0'
+  spec.add_dependency 'rails', '>= 7.0', '< 9.0'
 
-  # MCP SDK - Core protocol implementation
-  spec.add_dependency 'mcp', '~> 0.1.0'
+  # MCP SDK - Core protocol implementation (MCP 2025-11-25 spec)
+  spec.add_dependency 'mcp', '~> 0.7.0'
 
   # Core dependencies
   spec.add_dependency 'json', '~> 2.0'
   spec.add_dependency 'rack', '>= 2.0', '< 4.0'
   spec.add_dependency 'timeout', '~> 0.4'
-  spec.add_dependency 'webrick', '~> 1.8'
 
   # Development dependencies - keep versions consistent with Gemfile
   spec.add_development_dependency 'colorize', '~> 0.8'
@@ -81,6 +80,8 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rubocop-rails', '~> 2.32'
   spec.add_development_dependency 'rubocop-rspec', '~> 3.0'
   spec.add_development_dependency 'sqlite3', '~> 2.7'
+  # CI formatter for JUnit XML output
+  spec.add_development_dependency 'rspec_junit_formatter'
 
   # Post-install message to help users get started
   spec.post_install_message = <<~MSG

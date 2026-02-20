@@ -38,8 +38,8 @@ module RailsActiveMcp
     end
 
     # Quick execution method
-    def execute(code, **options)
-      ConsoleExecutor.new(config).execute(code, **options)
+    def execute(code, **)
+      ConsoleExecutor.new(config).execute(code, **)
     end
 
     # Logger accessor - configured by engine or defaults to stderr

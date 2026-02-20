@@ -43,8 +43,8 @@ begin
   # Always use SDK implementation
   Rails.application.eager_load! if defined?(Rails.application)
 
-  server = RailsActiveMcp::SDK::Server.new
-  server.run
+  server = RailsActiveMcp::Sdk::Server.new
+  server.run_stdio
 rescue LoadError => e
   warn "Error: MCP SDK not available - #{e.message}"
   warn "Please ensure the 'mcp' gem is installed: gem install mcp"

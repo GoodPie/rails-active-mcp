@@ -31,11 +31,6 @@ RSpec.describe RailsActiveMcp::Configuration do
       expect(config.log_level).to eq(:info)
     end
 
-    it 'sets allowed_commands to default to an array' do
-      expect(config.allowed_commands).to be_an(Array)
-      expect(config.allowed_commands).not_to be_empty
-    end
-
     it 'sets allowed_models to default to an empty array' do
       expect(config.allowed_models).to be_an(Array)
       expect(config.allowed_models).to be_empty
@@ -73,23 +68,12 @@ RSpec.describe RailsActiveMcp::Configuration do
       expect { config.validate? }.to raise_error(ArgumentError, /safe_mode must be a boolean/)
     end
 
-    it 'validates allowed_commands must be an array' do
-      config.allowed_commands = 'not_array'
-      expect { config.validate? }.to raise_error(ArgumentError, /allowed_commands must be an array/)
-    end
-
     it 'passes validation with valid configuration' do
       expect { config.validate? }.not_to raise_error
     end
   end
 
   describe 'configuration assignment', :assignment do
-    it 'allows setting allowed_commands to an array of strings' do
-      new_commands = %w[ls pwd cat grep]
-      config.allowed_commands = new_commands
-      expect(config.allowed_commands).to eq(new_commands)
-    end
-
     it 'allows setting command_timeout to positive integers' do
       config.command_timeout = 60
       expect(config.command_timeout).to eq(60)
@@ -113,12 +97,6 @@ RSpec.describe RailsActiveMcp::Configuration do
     it 'allows setting max_results to positive integers' do
       config.max_results = 200
       expect(config.max_results).to eq(200)
-    end
-
-    it 'allows empty arrays for allowed_commands' do
-      config.allowed_commands = []
-      expect(config.allowed_commands).to eq([])
-      expect(config.allowed_commands).to be_empty
     end
 
     it 'rejects zero values for command_timeout' do
@@ -273,12 +251,6 @@ RSpec.describe RailsActiveMcp::Configuration do
         expect(config.max_results).to be > 0
       end
 
-      it 'provides allowed_commands for command filtering' do
-        expect(config).to respond_to(:allowed_commands)
-        expect(config).to respond_to(:allowed_commands=)
-        expect(config.allowed_commands).to be_an(Array)
-      end
-
       it 'provides allowed_models for model access control' do
         expect(config).to respond_to(:allowed_models)
         expect(config).to respond_to(:allowed_models=)
@@ -392,7 +364,7 @@ RSpec.describe RailsActiveMcp::Configuration do
       it 'validates all SDK-required attributes are present and valid' do
         # All attributes required by SDK tools should be present
         required_attributes = %i[
-          safe_mode command_timeout max_results allowed_commands
+          safe_mode command_timeout max_results
           allowed_models log_level enable_logging
         ]
 

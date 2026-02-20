@@ -1,0 +1,39 @@
+#!/bin/bash
+# MCP Docker Wrapper
+# This script bridges MCP clients (running on host) with the Dockerized MCP server
+#
+# Usage in Claude Desktop config:
+# {
+#   "mcpServers": {
+#     "rails-active-mcp": {
+#       "command": "/absolute/path/to/rails-active-mcp/bin/mcp-docker-wrapper",
+#       "args": []
+#     }
+#   }
+# }
+
+set -e
+
+# Get the directory where this script lives
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Change to project directory
+cd "$PROJECT_DIR"
+
+# Ensure Docker Compose is available
+if ! command -v docker compose &> /dev/null; then
+    echo "Error: docker compose not found. Please install Docker Desktop." >&2
+    exit 1
+fi
+
+# Build the image if it doesn't exist
+if ! docker compose build mcp-server --quiet 2>/dev/null; then
+    echo "Building MCP server Docker image..." >&2
+    docker compose build mcp-server
+fi
+
+# Run the MCP server in a container, piping stdin/stdout
+# The --rm flag ensures the container is removed after execution
+# The -T flag disables pseudo-TTY allocation (required for STDIO protocol)
+exec docker compose run --rm -T mcp-server

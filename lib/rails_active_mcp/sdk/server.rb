@@ -30,6 +30,8 @@ module RailsActiveMcp
         @mcp_server = MCP::Server.new(
           name: 'rails-active-mcp',
           version: RailsActiveMcp::VERSION,
+          description: 'Secure Rails console access via Model Context Protocol (MCP) for AI agents',
+          website_url: 'https://github.com/goodpie/rails-active-mcp',
           tools: discover_tools,
           server_context: server_context
         )
@@ -42,8 +44,8 @@ module RailsActiveMcp
         # Ensure output redirection is active for stdio mode
         ensure_output_redirection_for_stdio
 
-        require 'mcp/transports/stdio'
-        transport = MCP::Transports::StdioTransport.new(@mcp_server)
+        require 'mcp/server/transports/stdio_transport'
+        transport = MCP::Server::Transports::StdioTransport.new(@mcp_server)
         transport.open
       rescue StandardError => e
         # Log to stderr (which is redirected to file) and re-raise
@@ -124,6 +126,8 @@ module RailsActiveMcp
       def configure_mcp
         # Configure MCP SDK with Rails-specific handlers
         MCP.configure do |config|
+          # Set protocol version to MCP 2025-11-25 specification
+          config.protocol_version = '2025-11-25'
           config.exception_reporter = method(:handle_rails_exception)
           config.instrumentation_callback = method(:log_mcp_calls)
         end

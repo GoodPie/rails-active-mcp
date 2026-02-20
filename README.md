@@ -8,86 +8,36 @@ A Ruby gem that provides secure Rails console access through Model Context Proto
 
 
 
-## Features
+## Quick Start
 
-- 🔒 **Safe Execution**: Advanced safety checks prevent dangerous operations
-- 🚀 **Official MCP SDK**: Built with the official MCP Ruby SDK for robust protocol handling
-- 📊 **Read-Only Queries**: Safe database querying with automatic result limiting
-- 🔍 **Code Analysis**: Dry-run capabilities to analyze code before execution
-- 📝 **Audit Logging**: Complete execution logging for security and debugging
-- ⚙️ **Configurable**: Flexible configuration for different environments
-- 🛡️ **Production Ready**: Strict safety modes for production environments
-- ⚡ **Professional Implementation**: Built-in instrumentation, timing, and error handling
+Get up and running in three steps:
 
-## Installation
+### 1. Install the gem
 
-Add this line to your application's Gemfile:
+Add to your Rails application's `Gemfile`:
 
 ```ruby
 gem 'rails-active-mcp'
 ```
 
-And then execute:
-
 ```bash
 bundle install
 ```
 
-Run the installer:
+### 2. Run the installer
 
 ```bash
 rails generate rails_active_mcp:install
 ```
 
-This will:
+This creates an initializer, mounts the MCP engine, and generates a standalone server file.
 
-- Create an initializer with configuration options
-- Mount the MCP server for Rails integration
-- Create a `mcp.ru` server file for standalone usage
-- Set up audit logging
+### 3. Connect to Claude Desktop
 
-## Configuration
+Add the following to your Claude Desktop configuration file:
 
-The gem is configured in `config/initializers/rails_active_mcp.rb`:
-
-```ruby
-RailsActiveMcp.configure do |config|
-  # Core configuration options
-  config.allowed_commands = %w[
-    ls pwd cat head tail grep find wc
-    rails console rails runner
-    bundle exec rspec bundle exec test
-    git status git log git diff
-  ]
-  config.command_timeout = 30
-  config.enable_logging = true
-  config.log_level = :info
-end
-```
-
-## Running the MCP Server
-
-The server runs in STDIO mode, perfect for Claude Desktop integration:
-
-```bash
-$ bundle exec rails-active-mcp-server
-```
-
-The server automatically:
-- Loads your Rails application
-- Initializes all models and configurations
-- Provides secure access to your Rails environment
-- Uses the official MCP Ruby SDK for protocol handling
-
-## Usage
-
-### Claude Desktop Integration (Recommended)
-
-Add to your Claude Desktop configuration file:
-
-**Location:**
-- macOS/Linux: `~/.config/claude-desktop/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+- **macOS/Linux:** `~/.config/claude-desktop/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
@@ -101,27 +51,53 @@ Add to your Claude Desktop configuration file:
 }
 ```
 
-Or if installed globally:
+Restart Claude Desktop, and you're done. Four tools will appear automatically: `console_execute`, `model_info`, `safe_query`, and `dry_run`.
 
-```json
-{
-  "mcpServers": {
-    "rails-active-mcp": {
-      "command": "rails-active-mcp-server",
-      "cwd": "/path/to/your/rails/project"
-    }
-  }
-}
-```
-
-Then in Claude Desktop, you can use prompts like:
+Try asking Claude:
 
 - "Show me all users created in the last week"
 - "What's the average order value?"
 - "Check the User model schema and associations"
 - "Analyze this code for safety: User.delete_all"
 
+## Features
+
+- 🔒 **Safe Execution**: Advanced safety checks prevent dangerous operations
+- 🚀 **Official MCP SDK**: Built with the official MCP Ruby SDK for robust protocol handling
+- 📊 **Read-Only Queries**: Safe database querying with automatic result limiting
+- 🔍 **Code Analysis**: Dry-run capabilities to analyze code before execution
+- 📝 **Audit Logging**: Complete execution logging for security and debugging
+- ⚙️ **Configurable**: Flexible configuration for different environments
+- 🛡️ **Production Ready**: Strict safety modes for production environments
+- ⚡ **Professional Implementation**: Built-in instrumentation, timing, and error handling
+
+## Configuration
+
+The installer creates a default configuration at `config/initializers/rails_active_mcp.rb`. The defaults work out of the box, but you can customize behavior:
+
+```ruby
+RailsActiveMcp.configure do |config|
+  config.allowed_commands = %w[
+    ls pwd cat head tail grep find wc
+    rails console rails runner
+    bundle exec rspec bundle exec test
+    git status git log git diff
+  ]
+  config.command_timeout = 30
+  config.enable_logging = true
+  config.log_level = :info
+end
+```
+
+## Usage
+
+### Claude Desktop (Recommended)
+
+Once connected (see [Quick Start](#quick-start)), Claude Desktop automatically runs the MCP server for you. The server loads your Rails application, initializes models, and provides secure access to your Rails environment via STDIO transport.
+
 ### Direct Usage
+
+You can also use the gem directly in Ruby:
 
 ```ruby
 # Execute code safely
@@ -129,6 +105,17 @@ result = RailsActiveMcp.execute("User.count")
 
 # Check if code is safe
 RailsActiveMcp.safe?("User.delete_all") # => false
+```
+
+### Running the Server Manually
+
+If you need to run the server outside of Claude Desktop (e.g., for debugging):
+
+```bash
+bundle exec rails-active-mcp-server
+
+# With debug logging
+RAILS_MCP_DEBUG=1 bundle exec rails-active-mcp-server
 ```
 
 ## Available MCP Tools
@@ -255,26 +242,12 @@ All errors are properly reported through the MCP protocol with detailed messages
 
 ## Development and Testing
 
-### Running Tests
-
 ```bash
-$ bundle exec rspec
-```
+# Run tests
+bundle exec rspec
 
-### Testing MCP Integration
-
-```bash
-$ ./bin/test-mcp-output
-```
-
-This tests the MCP server output redirection and JSON protocol compliance.
-
-### Debugging
-
-Set the debug environment variable for detailed logging:
-
-```bash
-$ RAILS_MCP_DEBUG=1 bundle exec rails-active-mcp-server
+# Test MCP server protocol compliance
+./bin/test-mcp-output
 ```
 
 ## Contributing

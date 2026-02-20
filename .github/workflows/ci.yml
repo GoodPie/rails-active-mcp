@@ -12,12 +12,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ["3.0", "3.1", "3.2", "3.3"]
-        rails-version: ["6.1", "7.0", "7.1", "7.2"]
-        exclude:
-          # Exclude some combinations that aren't supported
-          - ruby-version: "3.0"
-            rails-version: "7.2"
+        ruby-version: ["3.2", "3.3", "3.4"]
+        rails-version: ["7.0", "7.1", "7.2", "8.0", "8.1"]
 
     steps:
       - uses: actions/checkout@v4
@@ -35,12 +31,8 @@ jobs:
         env:
           RAILS_ENV: test
 
-      - name: Setup test database
-        run: |
-          bundle exec rails db:create
-          bundle exec rails db:migrate
-        env:
-          RAILS_ENV: test
+      - name: Prepare test output dir
+        run: mkdir -p tmp
 
       - name: Run RSpec tests
         run: bundle exec rspec --format progress --format RspecJunitFormatter --out tmp/rspec.xml
@@ -89,13 +81,6 @@ jobs:
           gem install bundler-audit
           bundle audit --update
 
-      - name: Run Brakeman (if applicable)
-        run: |
-          if [ -f "spec/dummy/config/application.rb" ]; then
-            gem install brakeman
-            cd spec/dummy && brakeman --no-pager
-          fi
-
   performance:
     runs-on: ubuntu-latest
     steps:
@@ -109,7 +94,7 @@ jobs:
 
       - name: Run performance benchmarks
         run: |
-          bundle exec rails runner "require 'benchmark'; puts Benchmark.measure { 100.times { RailsActiveMcp.safe?('User.count') } }"
+          bundle exec ruby -e "require 'rails_active_mcp'; require 'benchmark'; puts Benchmark.measure { 100.times { RailsActiveMcp.safe?('User.count') } }"
 
   compatibility:
     runs-on: ubuntu-latest
@@ -132,7 +117,7 @@ jobs:
           sleep 3
 
           # Test basic MCP protocol
-          echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | timeout 5 bundle exec exe/rails-active-mcp-server stdio | jq .
+          echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | timeout 5 bundle exec exe/rails-active-mcp-server stdio | jq .
 
           # Clean up
           kill $SERVER_PID || true
@@ -154,5 +139,5 @@ jobs:
 
       - name: Test gem installation
         run: |
-          gem install ./rails_active_mcp-*.gem
+          gem install ./rails-active-mcp-*.gem
           ruby -e "require 'rails_active_mcp'; puts RailsActiveMcp::VERSION"

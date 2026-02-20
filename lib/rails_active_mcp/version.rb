@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 
 module RailsActiveMcp
-  VERSION = '2.0.12'
+  VERSION = '3.1.0'
 end

@@ -1,14 +1,8 @@
+# frozen_string_literal: true
+
 require 'rails_active_mcp'
 
 RailsActiveMcp.configure do |config|
-  # Core configuration options
-  config.allowed_commands = %w[
-    ls pwd cat head tail grep find wc
-    rails console rails runner
-    bundle exec rspec bundle exec test
-    git status git log git diff
-  ]
-
   # Execution timeout in seconds
   config.command_timeout = 30
 

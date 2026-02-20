@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 namespace :rails_active_mcp do
   desc 'Check the safety of Ruby code'
   task :check_safety, [:code] => :environment do |_task, args|

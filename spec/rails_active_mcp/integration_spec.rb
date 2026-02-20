@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # noinspection RubyResolve
 require 'spec_helper'
 
@@ -125,7 +127,7 @@ RSpec.describe 'RailsActiveMcp Integration' do
       it 'extracts model information' do
         info = executor.get_model_info('User')
 
-        puts "DEBUG: model info result = #{info.inspect}" if info[:success] == false
+        RSpec.configuration.reporter.message("DEBUG: model info result = #{info.inspect}") if info[:success] == false
         expect(info[:success]).to be true
         expect(info[:model_name]).to eq('User')
         expect(info[:columns]).to be_an(Array)

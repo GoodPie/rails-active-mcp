@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+examples/
+
+# Development files
+.vscode/
+.idea/
+*.sublime-*
+
+# Ruby/Rails
+*.gem
+.bundle/
+vendor/bundle
+log/
+tmp/
+.byebug_history
+
+# Testing
+coverage/
+spec/reports/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# CI/CD
+.github/
+
+# Keep these for the build
+!Gemfile
+!Gemfile.lock
+!rails_active_mcp.gemspec
+!lib/rails_active_mcp/version.rb

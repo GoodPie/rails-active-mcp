@@ -5,7 +5,7 @@ plugins:
 AllCops:
   NewCops: enable
   SuggestExtensions: false
-  TargetRubyVersion: 3.1
+  TargetRubyVersion: 3.2
   Exclude:
     - 'bin/bundle'
     - 'bin/setup'
@@ -70,9 +70,8 @@ Style/SafeNavigation:
 Style/StringLiterals:
   EnforcedStyle: single_quotes
 
-# Don't enforce frozen string literals in every file
 Style/FrozenStringLiteralComment:
-  Enabled: false
+  Enabled: true
 
 # Allow numeric comparisons with zero
 Style/NumericPredicate:
@@ -90,12 +89,9 @@ RSpec:
 Gemspec/DevelopmentDependencies:
   Enabled: false
 
-# Allow some duplication in methods that handle similar cases
-Lint/DuplicateMethods:
-  Enabled: false
-
 Lint/DuplicateBranch:
-  Enabled: false
+  Exclude:
+    - 'lib/rails_active_mcp/console_executor.rb'
 
 # RSpec specific overrides for test quality
 RSpec/MultipleExpectations:
@@ -131,9 +127,13 @@ RSpec/ScatteredSetup:
 RSpec/SpecFilePathFormat:
   Enabled: false
 
-# Allow Time.zone vs Time.now flexibility
 Rails/TimeZone:
-  Enabled: false
+  Enabled: true
+  Exclude:
+    - 'exe/*'
+    - 'lib/rails_active_mcp/sdk/server.rb'
+    - 'lib/rails_active_mcp/console_executor.rb'
+    - 'spec/**/*'
 
 # Naming conventions - allow short parameter names in specs/tools
 Naming/MethodParameterName:
