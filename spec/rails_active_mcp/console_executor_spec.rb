@@ -278,12 +278,13 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
         mock_pool = double('ConnectionPool')
         allow(ActiveRecord::Base).to receive(:connection_pool).and_return(mock_pool)
         allow(mock_pool).to receive(:with_connection).and_yield
-        allow(ActiveRecord::Base).to receive(:clear_active_connections!)
+        allow(mock_pool).to receive(:release_connection)
+        allow(mock_pool).to receive(:respond_to?).with(:release_connection).and_return(true)
       end
 
       it 'manages connection pool properly' do
         expect(ActiveRecord::Base.connection_pool).to receive(:with_connection).and_yield
-        expect(ActiveRecord::Base).to receive(:clear_active_connections!)
+        expect(ActiveRecord::Base.connection_pool).to receive(:release_connection)
 
         result = executor.execute('2 + 2')
         expect(result[:success]).to be true
@@ -317,7 +318,10 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
       allow(Random).to receive(:rand).with(100).and_return(1) # Force GC trigger
 
       if defined?(ActiveRecord::Base)
-        allow(ActiveRecord::Base).to receive(:clear_active_connections!)
+        pool = double('ConnectionPool')
+        allow(ActiveRecord::Base).to receive(:connection_pool).and_return(pool)
+        allow(pool).to receive(:respond_to?).with(:release_connection).and_return(true)
+        allow(pool).to receive(:release_connection)
         expect(GC).to receive(:start)
       end
 

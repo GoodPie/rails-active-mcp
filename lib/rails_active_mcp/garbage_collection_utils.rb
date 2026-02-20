@@ -8,7 +8,12 @@ module RailsActiveMcp
       return unless defined?(::ActiveRecord::Base)
 
       # Clean up connections to prevent pool exhaustion
-      ::ActiveRecord::Base.clear_active_connections!
+      # Rails 7.2+ removed clear_active_connections! from ActiveRecord::Base
+      if ::ActiveRecord::Base.connection_pool.respond_to?(:release_connection)
+        ::ActiveRecord::Base.connection_pool.release_connection
+      elsif ::ActiveRecord::Base.respond_to?(:clear_active_connections!)
+        ::ActiveRecord::Base.clear_active_connections!
+      end
       GC.start if rand(100) < 5
     end
   end
