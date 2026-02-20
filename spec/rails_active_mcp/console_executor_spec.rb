@@ -18,7 +18,7 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
     it 'initializes with a configuration and safety checker' do
       expect(executor.instance_variable_get(:@config)).to eq(config)
       expect(executor.instance_variable_get(:@safety_checker)).to be_a(RailsActiveMcp::SafetyChecker)
-      expect(executor.instance_variable_get(:@execution_mutex)).to be_a(Mutex)
+      expect(RailsActiveMcp::ConsoleExecutor::EXECUTION_MUTEX).to be_a(Mutex)
     end
   end
 
@@ -188,6 +188,15 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
 
       expect(result[:success]).to be false
       expect(result[:error_class]).to eq('SafetyError')
+      expect(result[:error]).to include('not allowed')
+    end
+  end
+
+  describe '#get_model_info' do
+    it 'blocks access to disallowed models' do
+      config.allowed_models = ['User']
+      result = executor.get_model_info('SecretModel')
+      expect(result[:success]).to be false
       expect(result[:error]).to include('not allowed')
     end
   end

@@ -78,8 +78,8 @@ module RailsActiveMcp
 
   # Console convenience methods
   module ConsoleMethods
-    def mcp_execute(code, **options)
-      RailsActiveMcp.execute(code, **options)
+    def mcp_execute(code, **)
+      RailsActiveMcp.execute(code, **)
     end
 
     def mcp_safe?(code)

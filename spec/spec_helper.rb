@@ -36,20 +36,23 @@ end
 # Mock Rails environment for testing
 require 'active_support/string_inquirer'
 
-module Rails
-  def self.env
-    @env ||= ActiveSupport::StringInquirer.new('test')
-  end
+# Only define Rails mock if real Rails hasn't been loaded yet
+unless defined?(Rails) && Rails.respond_to?(:application)
+  module Rails
+    def self.env
+      @env ||= ActiveSupport::StringInquirer.new('test')
+    end
 
-  def self.env=(environment)
-    @env = ActiveSupport::StringInquirer.new(environment.to_s)
-  end
+    def self.env=(environment)
+      @env = ActiveSupport::StringInquirer.new(environment.to_s)
+    end
 
-  def self.root
-    Pathname.new(Dir.pwd)
-  end
+    def self.root
+      Pathname.new(Dir.pwd)
+    end
 
-  def self.logger
-    @logger ||= Logger.new(File::NULL)
+    def self.logger
+      @logger ||= Logger.new(File::NULL)
+    end
   end
 end

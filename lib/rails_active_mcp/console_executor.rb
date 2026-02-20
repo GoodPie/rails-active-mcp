@@ -11,11 +11,11 @@ module RailsActiveMcp
 
     class ThreadSafetyError < StandardError; end
 
+    EXECUTION_MUTEX = Mutex.new
+
     def initialize(config)
       @config = config
       @safety_checker = SafetyChecker.new(config)
-      # Thread-safe mutex for critical sections
-      @execution_mutex = Mutex.new
     end
 
     def execute(code, timeout: nil, safe_mode: nil, capture_output: true)
@@ -105,9 +105,16 @@ module RailsActiveMcp
 
     def get_model_info(model_name)
       # Validate model access
-      raise RailsActiveMcp::SafetyError, "Access to model '#{model_name}' is not allowed" unless @config.model_allowed?(model_name)
+      unless @config.model_allowed?(model_name)
+        return {
+          success: false,
+          error: "Access to model '#{model_name}' is not allowed",
+          error_class: 'SafetyError',
+          model_name: model_name
+        }
+      end
 
-      begin
+      execute_with_rails_executor_and_connection do
         model_class = model_name.to_s.constantize
 
         # Ensure it's an ActiveRecord model
@@ -132,21 +139,28 @@ module RailsActiveMcp
           validators: validators_info,
           extracted_at: Time.now
         }
-      rescue NameError => e
-        {
-          success: false,
-          error: "Model '#{model_name}' not found: #{e.message}",
-          error_class: 'NameError',
-          model_name: model_name
-        }
-      rescue StandardError => e
-        {
-          success: false,
-          error: e.message,
-          error_class: e.class.name,
-          model_name: model_name
-        }
       end
+    rescue RailsActiveMcp::SafetyError => e
+      {
+        success: false,
+        error: e.message,
+        error_class: 'SafetyError',
+        model_name: model_name
+      }
+    rescue NameError => e
+      {
+        success: false,
+        error: "Model '#{model_name}' not found: #{e.message}",
+        error_class: 'NameError',
+        model_name: model_name
+      }
+    rescue StandardError => e
+      {
+        success: false,
+        error: e.message,
+        error_class: e.class.name,
+        model_name: model_name
+      }
     end
 
     def build_model_reflections(model_class)
@@ -298,7 +312,7 @@ module RailsActiveMcp
 
     def execute_with_captured_output(code)
       # Thread-safe output capture using mutex
-      @execution_mutex.synchronize do
+      EXECUTION_MUTEX.synchronize do
         # Capture both stdout and stderr to prevent any Rails output leakage
         old_stdout = $stdout
         old_stderr = $stderr

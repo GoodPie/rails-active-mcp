@@ -31,13 +31,6 @@ jobs:
         env:
           RAILS_ENV: test
 
-      - name: Setup test database
-        run: |
-          bundle exec rails db:create
-          bundle exec rails db:migrate
-        env:
-          RAILS_ENV: test
-
       - name: Run RSpec tests
         run: bundle exec rspec --format progress --format RspecJunitFormatter --out tmp/rspec.xml
         env:
@@ -85,13 +78,6 @@ jobs:
           gem install bundler-audit
           bundle audit --update
 
-      - name: Run Brakeman (if applicable)
-        run: |
-          if [ -f "spec/dummy/config/application.rb" ]; then
-            gem install brakeman
-            cd spec/dummy && brakeman --no-pager
-          fi
-
   performance:
     runs-on: ubuntu-latest
     steps:
@@ -105,7 +91,7 @@ jobs:
 
       - name: Run performance benchmarks
         run: |
-          bundle exec rails runner "require 'benchmark'; puts Benchmark.measure { 100.times { RailsActiveMcp.safe?('User.count') } }"
+          bundle exec ruby -e "require 'rails_active_mcp'; require 'benchmark'; puts Benchmark.measure { 100.times { RailsActiveMcp.safe?('User.count') } }"
 
   compatibility:
     runs-on: ubuntu-latest

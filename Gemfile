@@ -10,9 +10,9 @@ gem 'rails', '>= 7.0'
 group :development, :test do
   gem 'byebug'
   gem 'database_cleaner-active_record', '~> 2.1'
+  gem 'simplecov', '~> 0.22'
   gem 'timecop', '~> 0.9.8'
   gem 'webmock', '~> 3.19'
-  gem 'simplecov', '~> 0.22'
 end
 
 group :development do

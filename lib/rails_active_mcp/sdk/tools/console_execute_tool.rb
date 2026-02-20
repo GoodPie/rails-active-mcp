@@ -54,8 +54,8 @@ module RailsActiveMcp
 
             if result[:success]
               MCP::Tool::Response.new([
-                { type: 'text', text: format_success_result(result) }
-              ])
+                                        { type: 'text', text: format_success_result(result) }
+                                      ])
             else
               MCP::Tool::Response.new(
                 [{ type: 'text', text: format_error_result(result) }],

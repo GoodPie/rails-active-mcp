@@ -40,57 +40,49 @@ module RailsActiveMcp
 
         def self.call(model:, server_context:, include_schema: true, include_associations: true,
                       include_validations: true)
-          RailsActiveMcp.config
+          config = RailsActiveMcp.config
+          executor = RailsActiveMcp::ConsoleExecutor.new(config)
+          result = executor.get_model_info(model)
 
-          begin
-            model_class = model.constantize
+          return error_response(result[:error]) unless result[:success]
 
-            output = []
-            output << "Model: #{model}"
-            output << "Table: #{model_class.table_name}"
-            output << "Primary Key: #{model_class.primary_key}"
+          output = []
+          output << "Model: #{result[:model_name]}"
+          output << "Table: #{result[:table_name]}"
+          output << "Primary Key: #{result[:primary_key]}"
 
-            if include_schema
-              output << "\nSchema:"
-              model_class.columns.each do |column|
-                output << "  #{column.name}: #{column.type} (#{column.sql_type})"
-                output << "    - Null: #{column.null}"
-                output << "    - Default: #{column.default}" if column.default
-              end
+          if include_schema
+            output << "\nSchema:"
+            result[:columns].each do |column|
+              output << "  #{column[:name]}: #{column[:type]}"
+              output << "    - Primary: #{column[:primary]}"
             end
-
-            if include_associations
-              output << "\nAssociations:"
-              model_class.reflections.each do |name, reflection|
-                output << "  #{name}: #{reflection.class.name.split('::').last} -> #{reflection.class_name}"
-              end
-            end
-
-            if include_validations
-              validations = {}
-              model_class.validators.each do |validator|
-                validator.attributes.each do |attribute|
-                  validations[attribute] ||= []
-                  validations[attribute] << validator.class.name.split('::').last
-                end
-              end
-
-              if validations.any?
-                output << "\nValidations:"
-                validations.each do |attr, validators|
-                  output << "  #{attr}: #{validators.join(', ')}"
-                end
-              end
-            end
-
-            MCP::Tool::Response.new([
-                                      { type: 'text', text: output.join("\n") }
-                                    ])
-          rescue NameError
-            error_response("Model '#{model}' not found")
-          rescue StandardError => e
-            error_response("Error analyzing model: #{e.message}")
           end
+
+          if include_associations
+            output << "\nAssociations:"
+            result[:associations].each do |assoc|
+              output << "  #{assoc[:name]}: #{assoc[:type]} -> #{assoc[:class_name]}"
+            end
+          end
+
+          if include_validations && result[:validators]&.any?
+            output << "\nValidations:"
+            validations = {}
+            result[:validators].each do |validator|
+              validator[:attributes].each do |attribute|
+                validations[attribute] ||= []
+                validations[attribute] << validator[:type].to_s.split('::').last
+              end
+            end
+            validations.each do |attr, validators|
+              output << "  #{attr}: #{validators.join(', ')}"
+            end
+          end
+
+          MCP::Tool::Response.new([
+                                    { type: 'text', text: output.join("\n") }
+                                  ])
         end
 
         def self.error_response(message)

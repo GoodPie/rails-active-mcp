@@ -30,5 +30,5 @@ end
 # For testing the gem in a Rails app
 gem 'sprockets-rails' # Required for Rails 7+
 
-# Official MCP Ruby SDK for migration
-gem 'mcp', '~> 0.4.0'
+# Official MCP Ruby SDK
+gem 'mcp', '~> 0.6.0'

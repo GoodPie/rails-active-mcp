@@ -1,8 +1,22 @@
 #!/usr/bin/env bash
 
+# Rails Active MCP wrapper script
+#
+# Environment variables:
+#   MCP_RAILS_APP_DIR  (required) - Path to the Rails application directory
+#   MCP_ASDF_DIR       (optional) - Path to asdf installation (default: $HOME/.asdf)
+
+set -euo pipefail
+
+if [ -z "${MCP_RAILS_APP_DIR:-}" ]; then
+    echo "Error: MCP_RAILS_APP_DIR must be set to your Rails application directory" >&2
+    exit 1
+fi
+
 # Source asdf to make it available
-export ASDF_DIR="/Users/brandyn/.asdf"
-export PATH="/Users/brandyn/.asdf/shims:/Users/brandyn/.asdf/bin:$PATH"
+ASDF_DIR="${MCP_ASDF_DIR:-$HOME/.asdf}"
+export ASDF_DIR
+export PATH="$ASDF_DIR/shims:$ASDF_DIR/bin:$PATH"
 
 # Source asdf if it exists
 if [ -f "$ASDF_DIR/asdf.sh" ]; then
@@ -10,7 +24,7 @@ if [ -f "$ASDF_DIR/asdf.sh" ]; then
 fi
 
 # Change to the Rails project directory
-cd "/Users/brandyn/Documents/development/ascend-health-plus"
+cd "$MCP_RAILS_APP_DIR"
 
 # Execute the Rails Active MCP server with all arguments
-exec bundle exec rails-active-mcp-server "$@" 
+exec bundle exec rails-active-mcp-server "$@"

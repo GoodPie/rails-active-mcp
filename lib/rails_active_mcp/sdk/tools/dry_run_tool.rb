@@ -26,7 +26,7 @@ module RailsActiveMcp
           open_world_hint: false
         )
 
-        def self.call(code:, server_context:, check_safety: true, analyze_dependencies: true)
+        def self.call(code:, server_context:)
           config = RailsActiveMcp.config
 
           # Create safety checker
