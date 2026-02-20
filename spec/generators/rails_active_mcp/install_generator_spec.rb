@@ -89,7 +89,7 @@ RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
 
       expect(content).to include('#!/usr/bin/env bash')
       expect(content).to include('Rails Active MCP Wrapper Script')
-      expect(content).to include('setup_ruby_path')
+      expect(content).to include('USER_SHELL')
       expect(content).to include('bundle exec rails-active-mcp-server')
     end
 

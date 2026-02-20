@@ -1,89 +1,27 @@
 #!/usr/bin/env bash
 
 # Rails Active MCP Wrapper Script
-# This script ensures Rails Active MCP works reliably across different Ruby version managers
-# when launched from MCP hosts (Claude Desktop, Claude Code, etc.) which may not have
-# the user's shell profile loaded.
+# Re-execs through the user's login shell to pick up Ruby version manager
+# configuration (rbenv, asdf, mise, rvm, chruby, etc.) that MCP hosts
+# don't load automatically.
 
-# Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+USER_SHELL="${SHELL:-/bin/bash}"
 
-# Change to the Rails project directory
-cd "$PROJECT_ROOT" || {
-    echo "Error: Cannot change to project root directory: $PROJECT_ROOT" >&2
-    exit 1
-}
+# Save real stdout to fd 3, redirect stdout to stderr during shell init
+# to prevent profile output from corrupting MCP protocol
+exec 3>&1 1>&2
 
-# Setup Ruby environment by adding version manager shims to PATH.
-# Shims are self-contained scripts that route to the correct Ruby version
-# without requiring full shell initialization (eval, source, etc.).
-# This works reliably even in non-interactive contexts like MCP hosts.
-setup_ruby_path() {
-    # rbenv: shims directory handles version switching
-    local rbenv_root="${RBENV_ROOT:-$HOME/.rbenv}"
-    if [ -d "$rbenv_root/shims" ]; then
-        export PATH="$rbenv_root/shims:$PATH"
-        return
+exec "$USER_SHELL" -l -c '
+    exec 1>&3 3>&-   # restore real stdout for MCP server
+
+    cd "$1" || { echo "Error: Cannot cd to $1" >&2; exit 1; }
+
+    if [ ! -f "Gemfile" ]; then
+        echo "Error: Gemfile not found" >&2; exit 1
     fi
 
-    # asdf: shims directory handles version switching
-    local asdf_data="${ASDF_DATA_DIR:-$HOME/.asdf}"
-    if [ -d "$asdf_data/shims" ]; then
-        export PATH="$asdf_data/shims:$PATH"
-        return
-    fi
-
-    # mise (formerly rtx): shims directory
-    local mise_data="${MISE_DATA_DIR:-$HOME/.local/share/mise}"
-    if [ -d "$mise_data/shims" ]; then
-        export PATH="$mise_data/shims:$PATH"
-        return
-    fi
-
-    # rvm: requires sourcing but check for it
-    if [ -d "$HOME/.rvm/rubies" ]; then
-        if [ -f "$HOME/.rvm/scripts/rvm" ]; then
-            source "$HOME/.rvm/scripts/rvm"
-        fi
-        return
-    fi
-
-    # chruby: check common install locations
-    if [ -f /usr/local/share/chruby/chruby.sh ]; then
-        source /usr/local/share/chruby/chruby.sh
-        [ -f /usr/local/share/chruby/auto.sh ] && source /usr/local/share/chruby/auto.sh
-        return
-    fi
-    if [ -f /opt/homebrew/share/chruby/chruby.sh ]; then
-        source /opt/homebrew/share/chruby/chruby.sh
-        [ -f /opt/homebrew/share/chruby/auto.sh ] && source /opt/homebrew/share/chruby/auto.sh
-        return
-    fi
-}
-
-setup_ruby_path
-
-# Verify we have the necessary files
-if [ ! -f "Gemfile" ]; then
-    echo "Error: Gemfile not found in $PROJECT_ROOT" >&2
-    echo "Please ensure you're running this from a Rails application root" >&2
-    exit 1
-fi
-
-if [ ! -f "config/environment.rb" ]; then
-    echo "Warning: config/environment.rb not found. This may not be a Rails application." >&2
-fi
-
-# Set default environment if not specified
-export RAILS_ENV="${RAILS_ENV:-development}"
-
-# Ensure we have the rails-active-mcp gem available
-if ! bundle list 2>/dev/null | grep -q "rails-active-mcp"; then
-    echo "Error: rails-active-mcp gem not found in bundle" >&2
-    echo "Please run: bundle install" >&2
-    exit 1
-fi
-
-# Execute the Rails Active MCP server
-exec bundle exec rails-active-mcp-server "$@"
+    export RAILS_ENV="${RAILS_ENV:-development}"
+    exec bundle exec rails-active-mcp-server "$@"
+' _ "$PROJECT_ROOT" "$@"
