@@ -32,10 +32,13 @@ setup_ruby_environment() {
         "rbenv")
             if [ -n "$RBENV_ROOT" ] && [ -f "$RBENV_ROOT/bin/rbenv" ]; then
                 export PATH="$RBENV_ROOT/bin:$PATH"
-                eval "$(rbenv init -)"
+                eval "$(rbenv init - bash)"
             elif [ -f "$HOME/.rbenv/bin/rbenv" ]; then
                 export PATH="$HOME/.rbenv/bin:$PATH"
-                eval "$(rbenv init -)"
+                eval "$(rbenv init - bash)"
+            elif command -v rbenv >/dev/null 2>&1; then
+                # Homebrew or other installations where rbenv is already in PATH
+                eval "$(rbenv init - bash)"
             fi
             ;;
         "rvm")
