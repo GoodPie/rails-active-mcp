@@ -17,6 +17,7 @@ exec "$USER_SHELL" -l -c '
     exec 1>&3 3>&-   # restore real stdout for MCP server
 
     cd "$1" || { echo "Error: Cannot cd to $1" >&2; exit 1; }
+    shift
 
     if [ ! -f "Gemfile" ]; then
         echo "Error: Gemfile not found" >&2; exit 1
