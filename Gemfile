@@ -24,4 +24,4 @@ end
 gem 'sprockets-rails' # Required for Rails 7+
 
 # Official MCP Ruby SDK (MCP 2025-11-25 spec)
-gem 'mcp', '~> 0.6.0'
+gem 'mcp', '~> 0.7.0'

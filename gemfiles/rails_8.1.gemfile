@@ -1,8 +1,8 @@
-# Rails 6.0 Gemfile for CI testing
+# Rails 8.1 Gemfile for CI testing
 source 'https://rubygems.org'
 
 # Specify the Rails version
-gem 'rails', '~> 6.0'
+gem 'rails', '~> 8.1.0'
 
 # Include the main gemspec
 gemspec path: '../'
@@ -31,4 +31,4 @@ end
 gem 'sprockets-rails' # Required for Rails 7+
 
 # Official MCP Ruby SDK
-gem 'mcp', '~> 0.6.0'
+gem 'mcp', '~> 0.7.0'

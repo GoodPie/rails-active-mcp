@@ -60,16 +60,15 @@ Gem::Specification.new do |spec|
 
   # Runtime dependencies - more flexible Rails version support
   spec.add_dependency 'concurrent-ruby', '~> 1.3'
-  spec.add_dependency 'rails', '>= 6.1', '< 9.0'
+  spec.add_dependency 'rails', '>= 7.0', '< 9.0'
 
   # MCP SDK - Core protocol implementation (MCP 2025-11-25 spec)
-  spec.add_dependency 'mcp', '~> 0.6.0'
+  spec.add_dependency 'mcp', '~> 0.7.0'
 
   # Core dependencies
   spec.add_dependency 'json', '~> 2.0'
   spec.add_dependency 'rack', '>= 2.0', '< 4.0'
   spec.add_dependency 'timeout', '~> 0.4'
-  spec.add_dependency 'webrick', '~> 1.8'
 
   # Development dependencies - keep versions consistent with Gemfile
   spec.add_development_dependency 'colorize', '~> 0.8'

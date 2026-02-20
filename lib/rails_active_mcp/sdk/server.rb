@@ -44,8 +44,8 @@ module RailsActiveMcp
         # Ensure output redirection is active for stdio mode
         ensure_output_redirection_for_stdio
 
-        require 'mcp/transports/stdio'
-        transport = MCP::Transports::StdioTransport.new(@mcp_server)
+        require 'mcp/server/transports/stdio_transport'
+        transport = MCP::Server::Transports::StdioTransport.new(@mcp_server)
         transport.open
       rescue StandardError => e
         # Log to stderr (which is redirected to file) and re-raise

@@ -59,7 +59,7 @@ module RailsActiveMcp
             else
               MCP::Tool::Response.new(
                 [{ type: 'text', text: format_error_result(result) }],
-                is_error: true
+                error: true
               )
             end
           rescue RailsActiveMcp::SafetyError => e
