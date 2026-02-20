@@ -139,5 +139,5 @@ jobs:
 
       - name: Test gem installation
         run: |
-          gem install ./rails_active_mcp-*.gem
+          gem install ./rails-active-mcp-*.gem
           ruby -e "require 'rails_active_mcp'; puts RailsActiveMcp::VERSION"
