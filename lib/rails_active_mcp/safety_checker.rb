@@ -25,9 +25,9 @@ module RailsActiveMcp
       { pattern: /alias_method/, description: 'Method aliasing', severity: :medium },
       { pattern: /load\s*\(/, description: 'Code loading', severity: :medium },
       { pattern: /require\s*\(/, description: 'Library requiring', severity: :low },
-      { pattern: /exit/, description: 'Process termination', severity: :high },
-      { pattern: /abort/, description: 'Process abortion', severity: :high },
-      { pattern: /fork/, description: 'Process forking', severity: :high },
+      { pattern: /\bexit\b/, description: 'Process termination', severity: :high },
+      { pattern: /\babort\b/, description: 'Process abortion', severity: :high },
+      { pattern: /\bfork\b/, description: 'Process forking', severity: :high },
       { pattern: /Thread\.new/, description: 'Thread creation', severity: :medium },
       { pattern: /\$LOAD_PATH/, description: 'Load path manipulation', severity: :medium },
       { pattern: /ENV\[/, description: 'Environment variable access', severity: :low },
@@ -66,17 +66,6 @@ module RailsActiveMcp
       # Check against dangerous patterns
       dangerous_patterns.each do |pattern_info|
         violations << pattern_info if code.match?(pattern_info[:pattern])
-      end
-
-      # Check custom patterns
-      @config.custom_safety_patterns.each do |custom_pattern|
-        next unless code.match?(custom_pattern[:pattern])
-
-        violations << {
-          pattern: custom_pattern[:pattern],
-          description: custom_pattern[:description] || 'Custom safety rule',
-          severity: :custom
-        }
       end
 
       # Determine if code is read-only

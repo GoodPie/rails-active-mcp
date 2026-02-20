@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # noinspection RubyResolve
 require 'spec_helper'
 

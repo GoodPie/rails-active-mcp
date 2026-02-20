@@ -33,7 +33,6 @@ RSpec.describe 'SDK Integration' do
     it 'has valid default configuration' do
       config = RailsActiveMcp.config
       expect(config).to be_valid
-      expect(config.allowed_commands).to be_an(Array)
       expect(config.command_timeout).to be > 0
       expect(config.enable_logging).to be_in([true, false])
       expect(config.log_level).to be_a(Symbol)

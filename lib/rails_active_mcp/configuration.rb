@@ -5,19 +5,13 @@ require 'fileutils'
 module RailsActiveMcp
   class Configuration
     # Core configuration options
-    attr_accessor :allowed_commands, :command_timeout, :enable_logging, :log_level
+    attr_accessor :command_timeout, :enable_logging, :log_level
 
     # Safety and execution options
     attr_accessor :safe_mode, :max_results, :log_executions, :audit_file, :enabled
     attr_accessor :custom_safety_patterns, :allowed_models
 
     def initialize
-      @allowed_commands = %w[
-        ls pwd cat head tail grep find wc
-        rails console rails runner
-        bundle exec rspec bundle exec test
-        git status git log git diff
-      ]
       @command_timeout = 30
       @enable_logging = true
       @log_level = :info
@@ -39,8 +33,7 @@ module RailsActiveMcp
     end
 
     def valid?
-      allowed_commands.is_a?(Array) &&
-        command_timeout.is_a?(Numeric) && command_timeout > 0 &&
+      command_timeout.is_a?(Numeric) && command_timeout > 0 &&
         [true, false].include?(enable_logging) &&
         %i[debug info warn error].include?(log_level) &&
         [true, false].include?(safe_mode) &&
@@ -52,8 +45,6 @@ module RailsActiveMcp
     end
 
     def validate?
-      raise ArgumentError, 'allowed_commands must be an array' unless allowed_commands.is_a?(Array)
-
       raise ArgumentError, 'command_timeout must be positive' unless command_timeout.is_a?(Numeric) && command_timeout > 0
 
       raise ArgumentError, 'log_level must be one of: debug, info, warn, error' unless %i[debug info warn error].include?(log_level)

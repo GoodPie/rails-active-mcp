@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'timeout'
 require 'stringio'
 require 'concurrent-ruby'
@@ -298,6 +300,10 @@ module RailsActiveMcp
       RailsActiveMcp::GarbageCollectionUtils.probalistic_clean!
     end
 
+    # NOTE: Timeout.timeout uses Thread.raise which can interrupt ensure blocks and leave
+    # resources in an inconsistent state. This is acceptable here because each execution runs
+    # in an isolated binding context with mutex-protected output capture, so interrupted
+    # executions cannot leak shared state.
     def execute_with_timeout(code, timeout, capture_output)
       Timeout.timeout(timeout) do
         if capture_output
@@ -454,12 +460,6 @@ module RailsActiveMcp
       end
 
       console_context.instance_eval { binding }
-    end
-
-    # Previous methods remain the same but are now called within thread-safe context
-    def create_console_binding
-      # Delegate to thread-safe version
-      create_thread_safe_console_binding
     end
 
     def count_method?(method)

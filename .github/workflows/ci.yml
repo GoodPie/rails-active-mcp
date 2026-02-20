@@ -31,6 +31,9 @@ jobs:
         env:
           RAILS_ENV: test
 
+      - name: Prepare test output dir
+        run: mkdir -p tmp
+
       - name: Run RSpec tests
         run: bundle exec rspec --format progress --format RspecJunitFormatter --out tmp/rspec.xml
         env:

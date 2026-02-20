@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module RailsActiveMcp
   class GarbageCollectionUtils
     # Probabilistic garbage collection for long-running processes

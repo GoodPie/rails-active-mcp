@@ -80,6 +80,8 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rubocop-rails', '~> 2.32'
   spec.add_development_dependency 'rubocop-rspec', '~> 3.0'
   spec.add_development_dependency 'sqlite3', '~> 2.7'
+  # CI formatter for JUnit XML output
+  spec.add_development_dependency 'rspec_junit_formatter'
 
   # Post-install message to help users get started
   spec.post_install_message = <<~MSG
