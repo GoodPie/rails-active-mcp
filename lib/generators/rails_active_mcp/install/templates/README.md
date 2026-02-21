@@ -4,7 +4,7 @@ This Rails application is configured with Rails Active MCP for secure AI-powered
 
 ## What is Rails Active MCP?
 
-Rails Active MCP enables secure Rails console access through Model Context Protocol (MCP) for AI agents and development tools like Claude Desktop. It provides four main tools:
+Rails Active MCP enables secure Rails console access through [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) for AI agents and development tools. It provides four main tools:
 
 - **console_execute**: Execute Ruby/Rails code with safety checks
 - **model_info**: Inspect Rails models (schema, associations, validations)
@@ -23,28 +23,19 @@ bin/rails-active-mcp-wrapper
 RAILS_MCP_DEBUG=1 bin/rails-active-mcp-server
 ```
 
-### 2. Configure Claude Desktop
+### 2. Connect Your MCP Client
 
-Add this to your Claude Desktop configuration:
+If you selected MCP clients during installation, project-level config files were generated automatically. Open this project in your MCP client and the server should be detected.
 
-**macOS/Linux**: `~/.config/claude-desktop/claude_desktop_config.json`
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+For manual configuration, point your client at the server with:
 
-```json
-{
-  "mcpServers": {
-    "rails-active-mcp": {
-      "command": "/path/to/your/rails/app/bin/rails-active-mcp-wrapper",
-      "cwd": "/path/to/your/rails/app",
-      "env": {
-        "RAILS_ENV": "development"
-      }
-    }
-  }
-}
-```
+- **Command:** `bin/rails-active-mcp-wrapper`
+- **Working directory:** This project root
+- **Transport:** STDIO
 
-### 3. Try These Commands in Claude Desktop
+See the [full list of compatible MCP clients](https://modelcontextprotocol.io/clients).
+
+### 3. Try These Prompts
 
 - "Show me the User model structure"
 - "How many users were created in the last week?"
@@ -79,7 +70,7 @@ config.allowed_models = %w[User Post Comment]
 # Check code safety
 rails rails_active_mcp:check_safety['User.count']
 
-# Execute code with safety checks  
+# Execute code with safety checks
 rails rails_active_mcp:execute['User.count']
 
 # Test MCP tools
@@ -93,10 +84,10 @@ rails rails_active_mcp:test_tools
 - Check Ruby version compatibility
 - Verify all gems are installed: `bundle install`
 
-### Claude Desktop Connection Issues
-- Restart Claude Desktop after configuration changes
-- Check logs: `~/Library/Logs/Claude/mcp*.log` (macOS)
+### MCP Client Connection Issues
+- Restart your MCP client after configuration changes
 - Test server manually: `bin/rails-active-mcp-wrapper`
+- Debug mode: `RAILS_MCP_DEBUG=1 bin/rails-active-mcp-server`
 
 ### Permission Errors
 - Ensure wrapper script is executable: `chmod +x bin/rails-active-mcp-wrapper`

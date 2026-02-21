@@ -4,7 +4,9 @@ Note: This is just a personal project and while it works for the most part, I am
 
 # Rails Active MCP
 
-A Ruby gem that provides secure Rails console access through Model Context Protocol (MCP) for AI agents and development tools like Claude Desktop. Built using the official MCP Ruby SDK for professional protocol handling and future-proof compatibility.
+A Ruby gem that provides secure Rails console access through [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) for AI agents and development tools. Built using the official MCP Ruby SDK for professional protocol handling and future-proof compatibility.
+
+Works with any MCP-compatible client, including Claude Desktop, Claude Code, VS Code (GitHub Copilot), Cursor, Windsurf, ChatGPT, Gemini CLI, Amazon Q Developer, JetBrains IDEs, Zed, Warp, Cline, and [many more](https://modelcontextprotocol.io/clients).
 
 
 
@@ -30,12 +32,18 @@ bundle install
 rails generate rails_active_mcp:install
 ```
 
-This creates an initializer, mounts the MCP engine, and generates a standalone server file.
+This creates an initializer, server scripts, and prompts you to select which MCP clients you use. It will automatically generate the correct project-level config files (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, etc.) so your MCP client detects the server when you open the project.
 
-### 3. Connect to Claude Desktop
+### 3. Connect your MCP client
 
-Add the following to your Claude Desktop configuration file:
+If you selected your MCP client during installation, you're done — just open the project and the server will be detected automatically.
 
+For manual configuration or additional clients, the server uses STDIO transport. Below are configuration examples for popular tools.
+
+<details>
+<summary><strong>Claude Desktop</strong></summary>
+
+Edit your config file:
 - **macOS/Linux:** `~/.config/claude-desktop/claude_desktop_config.json`
 - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
@@ -51,9 +59,141 @@ Add the following to your Claude Desktop configuration file:
 }
 ```
 
-Restart Claude Desktop, and you're done. Four tools will appear automatically: `console_execute`, `model_info`, `safe_query`, and `dry_run`.
+Restart Claude Desktop and the tools will appear automatically.
+</details>
 
-Try asking Claude:
+<details>
+<summary><strong>Claude Code</strong></summary>
+
+From your Rails project directory:
+
+```bash
+claude mcp add rails-active-mcp -- bundle exec rails-active-mcp-server
+```
+
+Or add it to your project's `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "rails-active-mcp": {
+      "command": "bundle",
+      "args": ["exec", "rails-active-mcp-server"]
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><strong>VS Code (GitHub Copilot)</strong></summary>
+
+Add to your workspace `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "rails-active-mcp": {
+      "command": "bundle",
+      "args": ["exec", "rails-active-mcp-server"],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}
+```
+
+Tools are available in Copilot's Agent mode.
+</details>
+
+<details>
+<summary><strong>Cursor</strong></summary>
+
+Add to your project's `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "rails-active-mcp": {
+      "command": "bundle",
+      "args": ["exec", "rails-active-mcp-server"],
+      "cwd": "/path/to/your/rails/project"
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><strong>Windsurf</strong></summary>
+
+Add to your project's `.windsurf/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "rails-active-mcp": {
+      "command": "bundle",
+      "args": ["exec", "rails-active-mcp-server"],
+      "cwd": "/path/to/your/rails/project"
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><strong>Zed</strong></summary>
+
+Add to your Zed settings (`settings.json`):
+
+```json
+{
+  "context_servers": {
+    "rails-active-mcp": {
+      "command": {
+        "path": "bundle",
+        "args": ["exec", "rails-active-mcp-server"],
+        "env": {}
+      }
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><strong>ChatGPT Desktop</strong></summary>
+
+In ChatGPT Desktop, go to **Settings > Connectors > Advanced > Developer Mode**, then add:
+
+```json
+{
+  "mcpServers": {
+    "rails-active-mcp": {
+      "command": "bundle",
+      "args": ["exec", "rails-active-mcp-server"],
+      "cwd": "/path/to/your/rails/project"
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><strong>Other MCP Clients</strong></summary>
+
+Any MCP client that supports STDIO transport can connect to this server. The key details:
+
+- **Command:** `bundle exec rails-active-mcp-server`
+- **Working directory:** Your Rails project root
+- **Transport:** STDIO (stdin/stdout)
+
+See the [full list of MCP clients](https://modelcontextprotocol.io/clients) for more options.
+</details>
+
+Once connected, four tools will appear automatically: `console_execute`, `model_info`, `safe_query`, and `dry_run`.
+
+Try asking your AI assistant:
 
 - "Show me all users created in the last week"
 - "What's the average order value?"
@@ -91,9 +231,9 @@ end
 
 ## Usage
 
-### Claude Desktop (Recommended)
+### MCP Client (Recommended)
 
-Once connected (see [Quick Start](#quick-start)), Claude Desktop automatically runs the MCP server for you. The server loads your Rails application, initializes models, and provides secure access to your Rails environment via STDIO transport.
+Once connected (see [Quick Start](#quick-start)), your MCP client automatically runs the server for you. The server loads your Rails application, initializes models, and provides secure access to your Rails environment via STDIO transport.
 
 ### Direct Usage
 
@@ -109,7 +249,7 @@ RailsActiveMcp.safe?("User.delete_all") # => false
 
 ### Running the Server Manually
 
-If you need to run the server outside of Claude Desktop (e.g., for debugging):
+If you need to run the server directly (e.g., for debugging):
 
 ```bash
 bundle exec rails-active-mcp-server
@@ -120,7 +260,7 @@ RAILS_MCP_DEBUG=1 bundle exec rails-active-mcp-server
 
 ## Available MCP Tools
 
-The Rails Active MCP server provides four powerful tools that appear automatically in Claude Desktop:
+The Rails Active MCP server provides four powerful tools that appear automatically in any connected MCP client:
 
 ### 1. `console_execute`
 
@@ -131,7 +271,7 @@ Execute Ruby code with safety checks and timeout protection:
 - **Timeout**: Configurable execution timeout
 - **Logging**: All executions are logged for audit
 
-**Example Usage in Claude:**
+**Example prompt:**
 > "Execute `User.where(active: true).count`"
 
 ### 2. `model_info`
@@ -143,7 +283,7 @@ Get detailed information about Rails models:
 - **Validations**: All model validations and rules
 - **Methods**: Available instance and class methods
 
-**Example Usage in Claude:**
+**Example prompt:**
 > "Show me the User model structure"
 
 ### 3. `safe_query`
@@ -155,7 +295,7 @@ Execute safe, read-only database queries:
 - **Result Limiting**: Prevents large data dumps
 - **Model Context**: Works within your model definitions
 
-**Example Usage in Claude:**
+**Example prompt:**
 > "Get the 10 most recent orders"
 
 ### 4. `dry_run`
@@ -167,7 +307,7 @@ Analyze Ruby code for safety without executing:
 - **Recommendations**: Suggests safer alternatives
 - **Zero Execution**: Never runs the actual code
 
-**Example Usage in Claude:**
+**Example prompt:**
 > "Analyze this code for safety: `User.delete_all`"
 
 ## Safety Features
@@ -216,7 +356,7 @@ Rails Active MCP uses the official MCP Ruby SDK (`mcp` gem) for:
 
 The server is implemented in `lib/rails_active_mcp/sdk/server.rb` and provides:
 
-- **STDIO Transport**: Perfect for Claude Desktop integration
+- **STDIO Transport**: Compatible with all major MCP clients
 - **Tool Registration**: Automatic discovery of available tools
 - **Error Handling**: Comprehensive error reporting and recovery
 - **Rails Integration**: Deep integration with Rails applications

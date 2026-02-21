@@ -36,9 +36,10 @@ RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
 
   describe 'generator execution' do
     before do
-      # Silence the generator output during tests
+      # Silence the generator output and skip interactive prompts
       allow(generator).to receive(:say)
       allow(generator).to receive(:readme)
+      allow(generator).to receive(:ask).and_return('')
 
       # Run the generator
       generator.invoke_all
@@ -104,6 +105,169 @@ RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
     end
   end
 
+  describe 'MCP client config generation' do
+    before do
+      allow(generator).to receive(:say)
+      allow(generator).to receive(:readme)
+    end
+
+    context 'when user selects Claude Code' do
+      before do
+        allow(generator).to receive(:ask).and_return('1')
+        generator.invoke_all
+      end
+
+      it 'creates .mcp.json' do
+        config_path = File.join(destination_root, '.mcp.json')
+        expect(File.exist?(config_path)).to be true
+      end
+
+      it 'creates .mcp.json with correct structure' do
+        config_path = File.join(destination_root, '.mcp.json')
+        config = JSON.parse(File.read(config_path))
+
+        expect(config).to have_key('mcpServers')
+        expect(config['mcpServers']).to have_key('rails-active-mcp')
+        expect(config['mcpServers']['rails-active-mcp']['command']).to include('bin/rails-active-mcp-wrapper')
+      end
+    end
+
+    context 'when user selects Cursor' do
+      before do
+        allow(generator).to receive(:ask).and_return('2')
+        generator.invoke_all
+      end
+
+      it 'creates .cursor/mcp.json' do
+        config_path = File.join(destination_root, '.cursor/mcp.json')
+        expect(File.exist?(config_path)).to be true
+      end
+
+      it 'uses mcpServers key' do
+        config_path = File.join(destination_root, '.cursor/mcp.json')
+        config = JSON.parse(File.read(config_path))
+        expect(config).to have_key('mcpServers')
+      end
+    end
+
+    context 'when user selects VS Code' do
+      before do
+        allow(generator).to receive(:ask).and_return('3')
+        generator.invoke_all
+      end
+
+      it 'creates .vscode/mcp.json' do
+        config_path = File.join(destination_root, '.vscode/mcp.json')
+        expect(File.exist?(config_path)).to be true
+      end
+
+      it 'uses servers key for VS Code format' do
+        config_path = File.join(destination_root, '.vscode/mcp.json')
+        config = JSON.parse(File.read(config_path))
+        expect(config).to have_key('servers')
+      end
+    end
+
+    context 'when user selects multiple clients' do
+      before do
+        allow(generator).to receive(:ask).and_return('1,2,3')
+        generator.invoke_all
+      end
+
+      it 'creates config files for all selected clients' do
+        expect(File.exist?(File.join(destination_root, '.mcp.json'))).to be true
+        expect(File.exist?(File.join(destination_root, '.cursor/mcp.json'))).to be true
+        expect(File.exist?(File.join(destination_root, '.vscode/mcp.json'))).to be true
+      end
+    end
+
+    context 'when user skips client selection' do
+      before do
+        allow(generator).to receive(:ask).and_return('6')
+        generator.invoke_all
+      end
+
+      it 'does not create any client config files' do
+        expect(File.exist?(File.join(destination_root, '.mcp.json'))).to be false
+        expect(File.exist?(File.join(destination_root, '.cursor/mcp.json'))).to be false
+        expect(File.exist?(File.join(destination_root, '.vscode/mcp.json'))).to be false
+      end
+    end
+
+    context 'when user enters empty response' do
+      before do
+        allow(generator).to receive(:ask).and_return('')
+        generator.invoke_all
+      end
+
+      it 'does not create any client config files' do
+        expect(File.exist?(File.join(destination_root, '.mcp.json'))).to be false
+        expect(File.exist?(File.join(destination_root, '.cursor/mcp.json'))).to be false
+        expect(File.exist?(File.join(destination_root, '.vscode/mcp.json'))).to be false
+      end
+    end
+
+    context 'when .mcp.json already exists with other servers' do
+      let(:existing_config) do
+        {
+          'mcpServers' => {
+            'some-other-server' => { 'command' => 'other-cmd', 'args' => [] }
+          }
+        }
+      end
+
+      before do
+        File.write(File.join(destination_root, '.mcp.json'), JSON.pretty_generate(existing_config))
+        allow(generator).to receive(:ask).and_return('1')
+        generator.invoke_all
+      end
+
+      it 'preserves existing servers' do
+        config = JSON.parse(File.read(File.join(destination_root, '.mcp.json')))
+        expect(config['mcpServers']).to have_key('some-other-server')
+      end
+
+      it 'adds rails-active-mcp alongside existing servers' do
+        config = JSON.parse(File.read(File.join(destination_root, '.mcp.json')))
+        expect(config['mcpServers']).to have_key('rails-active-mcp')
+      end
+    end
+
+    context 'when .mcp.json already has rails-active-mcp configured' do
+      let(:existing_config) do
+        {
+          'mcpServers' => {
+            'rails-active-mcp' => { 'command' => 'old-cmd', 'args' => ['--old'] }
+          }
+        }
+      end
+
+      before do
+        File.write(File.join(destination_root, '.mcp.json'), JSON.pretty_generate(existing_config))
+        allow(generator).to receive(:ask).and_return('1')
+        generator.invoke_all
+      end
+
+      it 'does not overwrite the existing entry' do
+        config = JSON.parse(File.read(File.join(destination_root, '.mcp.json')))
+        expect(config['mcpServers']['rails-active-mcp']['command']).to eq('old-cmd')
+      end
+    end
+
+    context 'when existing config file has invalid JSON' do
+      before do
+        File.write(File.join(destination_root, '.mcp.json'), 'not valid json{{{')
+        allow(generator).to receive(:ask).and_return('1')
+        generator.invoke_all
+      end
+
+      it 'does not crash and leaves the file unchanged' do
+        content = File.read(File.join(destination_root, '.mcp.json'))
+        expect(content).to eq('not valid json{{{')
+      end
+    end
+  end
+
   describe 'help text' do
     it 'displays the correct description' do
       expect(described_class.desc).to eq('Install Rails Active MCP')
@@ -142,6 +306,7 @@ RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
     before do
       allow(generator).to receive(:say)
       allow(generator).to receive(:readme)
+      allow(generator).to receive(:ask).and_return('')
       generator.invoke_all
     end
 
