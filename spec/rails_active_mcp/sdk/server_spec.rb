@@ -149,8 +149,15 @@ RSpec.describe RailsActiveMcp::Sdk::Server do
         jsonrpc_request('tools/call', { name: 'nonexistent_tool', arguments: {} })
       )
 
-      expect(result[:result][:isError]).to be true
-      expect(result[:result][:content].first[:text]).to include('Tool not found')
+      # MCP SDK 0.7.0 returns a tool error response (result with isError: true)
+      # MCP SDK 0.7.1+ returns a JSON-RPC error response (error key)
+      if result[:result]
+        expect(result[:result][:isError]).to be true
+        expect(result[:result][:content].first[:text]).to include('Tool not found')
+      else
+        expect(result[:error]).to be_a(Hash)
+        expect(result[:error][:data]).to include('Tool not found')
+      end
     end
   end
 end
