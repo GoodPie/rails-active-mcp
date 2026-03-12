@@ -20,7 +20,8 @@ module RailsActiveMcp
             },
             args: {
               type: 'array',
-              description: 'Arguments for the query method'
+              description: 'Arguments for the query method',
+              items: { type: 'string' }
             },
             limit: {
               type: 'integer',
