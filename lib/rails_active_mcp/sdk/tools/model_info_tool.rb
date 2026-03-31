@@ -25,6 +25,10 @@ module RailsActiveMcp
             include_validations: {
               type: 'boolean',
               description: 'Include model validations'
+            },
+            include_enums: {
+              type: 'boolean',
+              description: 'Include enum definitions and their values'
             }
           },
           required: ['model']
@@ -39,7 +43,7 @@ module RailsActiveMcp
         )
 
         def self.call(model:, server_context:, include_schema: true, include_associations: true,
-                      include_validations: true)
+                      include_validations: true, include_enums: true)
           config = RailsActiveMcp.config
           executor = RailsActiveMcp::ConsoleExecutor.new(config)
           result = executor.get_model_info(model)
@@ -77,6 +81,14 @@ module RailsActiveMcp
             end
             validations.each do |attr, validators|
               output << "  #{attr}: #{validators.join(', ')}"
+            end
+          end
+
+          if include_enums && result[:enums]&.any?
+            output << "\nEnums:"
+            result[:enums].each do |attribute, mapping|
+              values = mapping.map { |label, db_value| "#{label} (#{db_value})" }.join(', ')
+              output << "  #{attribute}: #{values}"
             end
           end
 

@@ -131,6 +131,8 @@ module RailsActiveMcp
 
         validators_info = build_model_validator_info(model_class)
 
+        enums_info = build_model_enums(model_class)
+
         {
           success: true,
           model_name: model_name,
@@ -139,6 +141,7 @@ module RailsActiveMcp
           columns: columns_info,
           associations: associations_info,
           validators: validators_info,
+          enums: enums_info,
           extracted_at: Time.now
         }
       end
@@ -196,6 +199,14 @@ module RailsActiveMcp
         end
       else
         []
+      end
+    end
+
+    def build_model_enums(model_class)
+      return {} unless model_class.respond_to?(:defined_enums)
+
+      model_class.defined_enums.transform_values do |mapping|
+        mapping.transform_values(&:to_s)
       end
     end
 
