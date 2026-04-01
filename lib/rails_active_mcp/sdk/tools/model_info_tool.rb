@@ -59,55 +59,66 @@ module RailsActiveMcp
         def call
           config = RailsActiveMcp.config
           executor = RailsActiveMcp::ConsoleExecutor.new(config)
-          result = executor.get_model_info(@model)
+          @result = executor.get_model_info(@model)
 
-          return self.class.error_response(result[:error]) unless result[:success]
+          return self.class.error_response(@result[:error]) unless @result[:success]
 
-          output = []
-          output << "Model: #{result[:model_name]}"
-          output << "Table: #{result[:table_name]}"
-          output << "Primary Key: #{result[:primary_key]}"
+          @output = []
+          @output << "Model: #{@result[:model_name]}"
+          @output << "Table: #{@result[:table_name]}"
+          @output << "Primary Key: #{@result[:primary_key]}"
 
-          if @include_schema
-            output << "\nSchema:"
-            result[:columns].each do |column|
-              output << "  #{column[:name]}: #{column[:type]}"
-              output << "    - Primary: #{column[:primary]}"
-            end
-          end
-
-          if @include_associations
-            output << "\nAssociations:"
-            result[:associations].each do |assoc|
-              output << "  #{assoc[:name]}: #{assoc[:type]} -> #{assoc[:class_name]}"
-            end
-          end
-
-          if @include_validations && result[:validators]&.any?
-            output << "\nValidations:"
-            validations = {}
-            result[:validators].each do |validator|
-              validator[:attributes].each do |attribute|
-                validations[attribute] ||= []
-                validations[attribute] << validator[:type].to_s.split('::').last
-              end
-            end
-            validations.each do |attr, validators|
-              output << "  #{attr}: #{validators.join(', ')}"
-            end
-          end
-
-          if @include_enums && result[:enums]&.any?
-            output << "\nEnums:"
-            result[:enums].each do |attribute, mapping|
-              values = mapping.map { |label, db_value| "#{label} (#{db_value})" }.join(', ')
-              output << "  #{attribute}: #{values}"
-            end
-          end
+          append_schema if @include_schema
+          append_associations if @include_associations
+          append_validations if @include_validations
+          append_enums if @include_enums
 
           MCP::Tool::Response.new([
-                                    { type: 'text', text: output.join("\n") }
+                                    { type: 'text', text: @output.join("\n") }
                                   ])
+        end
+
+        private
+
+        def append_schema
+          @output << "\nSchema:"
+          @result[:columns].each do |column|
+            @output << "  #{column[:name]}: #{column[:type]}"
+            @output << "    - Primary: #{column[:primary]}"
+          end
+        end
+
+        def append_associations
+          @output << "\nAssociations:"
+          @result[:associations].each do |assoc|
+            @output << "  #{assoc[:name]}: #{assoc[:type]} -> #{assoc[:class_name]}"
+          end
+        end
+
+        def append_validations
+          return unless @result[:validators]&.any?
+
+          @output << "\nValidations:"
+          validations = {}
+          @result[:validators].each do |validator|
+            validator[:attributes].each do |attribute|
+              validations[attribute] ||= []
+              validations[attribute] << validator[:type].to_s.split('::').last
+            end
+          end
+          validations.each do |attr, validators|
+            @output << "  #{attr}: #{validators.join(', ')}"
+          end
+        end
+
+        def append_enums
+          return unless @result[:enums]&.any?
+
+          @output << "\nEnums:"
+          @result[:enums].each do |attribute, mapping|
+            values = mapping.map { |label, db_value| "#{label} (#{db_value})" }.join(', ')
+            @output << "  #{attribute}: #{values}"
+          end
         end
 
         def self.error_response(message)
