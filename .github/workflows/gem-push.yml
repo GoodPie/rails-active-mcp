@@ -2,9 +2,8 @@ name: Ruby Gem
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -24,7 +23,6 @@ jobs:
       run: gem build *.gemspec
 
     - name: Publish to GitHub Packages
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       continue-on-error: true
       run: |
         mkdir -p $HOME/.gem
@@ -37,7 +35,6 @@ jobs:
         OWNER: ${{ github.repository_owner }}
 
     - name: Publish to RubyGems
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       run: |
         mkdir -p $HOME/.gem
         touch $HOME/.gem/credentials
