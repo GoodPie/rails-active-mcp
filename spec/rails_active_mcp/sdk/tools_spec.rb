@@ -319,7 +319,8 @@ RSpec.describe 'MCP Tool Protocol Compliance' do
           associations: [
             { name: :posts, type: :has_many, class_name: 'Post' }
           ],
-          validators: []
+          validators: [],
+          enums: {}
         )
         described_class.call(model: 'User', server_context: server_context)
       end
@@ -344,6 +345,60 @@ RSpec.describe 'MCP Tool Protocol Compliance' do
       it 'includes associations' do
         text = response.to_h[:content].first[:text]
         expect(text).to include('posts: has_many -> Post')
+      end
+    end
+
+    context 'when model has enums' do
+      let(:response) do
+        allow(executor).to receive(:get_model_info).with('Post').and_return(
+          success: true,
+          model_name: 'Post',
+          table_name: 'posts',
+          primary_key: 'id',
+          columns: [
+            { name: 'id', type: :integer, primary: true },
+            { name: 'status', type: :integer, primary: false }
+          ],
+          associations: [],
+          validators: [],
+          enums: {
+            'status' => { 'draft' => '0', 'published' => '1', 'archived' => '2' }
+          }
+        )
+        described_class.call(model: 'Post', server_context: server_context)
+      end
+
+      it_behaves_like 'a successful MCP tool response'
+
+      it 'includes enum attribute name' do
+        text = response.to_h[:content].first[:text]
+        expect(text).to include('Enums:')
+        expect(text).to include('status:')
+      end
+
+      it 'includes enum values with database values' do
+        text = response.to_h[:content].first[:text]
+        expect(text).to include('draft (0)')
+        expect(text).to include('published (1)')
+        expect(text).to include('archived (2)')
+      end
+
+      it 'omits enums section when include_enums is false' do
+        allow(executor).to receive(:get_model_info).with('Post').and_return(
+          success: true,
+          model_name: 'Post',
+          table_name: 'posts',
+          primary_key: 'id',
+          columns: [],
+          associations: [],
+          validators: [],
+          enums: {
+            'status' => { 'draft' => '0', 'published' => '1', 'archived' => '2' }
+          }
+        )
+        result = described_class.call(model: 'Post', server_context: server_context, include_enums: false)
+        text = result.to_h[:content].first[:text]
+        expect(text).not_to include('Enums:')
       end
     end
 
@@ -391,9 +446,10 @@ RSpec.describe 'MCP Tool Protocol Compliance' do
         expect(schema[:required]).to include('model')
       end
 
-      it 'defines model, include_schema, include_associations, include_validations properties' do
+      it 'defines model, include_schema, include_associations, include_validations, include_enums properties' do
         props = described_class.input_schema_value.to_h[:properties]
-        expect(props.keys).to contain_exactly(:model, :include_schema, :include_associations, :include_validations)
+        expect(props.keys).to contain_exactly(:model, :include_schema, :include_associations, :include_validations,
+                                              :include_enums)
       end
 
       it 'is annotated as read-only' do
