@@ -42,18 +42,16 @@ module RailsActiveMcp
           open_world_hint: false
         )
 
-        def self.call(model:, server_context:, include_schema: true, include_associations: true,
-                      include_validations: true, include_enums: true)
-          new(model:, include_schema:, include_associations:, include_validations:, include_enums:).call
+        def self.call(model:, server_context:, **)
+          new(model:, **).call
         end
 
-        def initialize(model:, include_schema: true, include_associations: true,
-                       include_validations: true, include_enums: true)
+        def initialize(model:, **options) # rubocop:disable Lint/MissingSuper
           @model = model
-          @include_schema = include_schema
-          @include_associations = include_associations
-          @include_validations = include_validations
-          @include_enums = include_enums
+          @include_schema = options.fetch(:include_schema, true)
+          @include_associations = options.fetch(:include_associations, true)
+          @include_validations = options.fetch(:include_validations, true)
+          @include_enums = options.fetch(:include_enums, true)
         end
 
         def call
@@ -76,6 +74,13 @@ module RailsActiveMcp
           MCP::Tool::Response.new([
                                     { type: 'text', text: @output.join("\n") }
                                   ])
+        end
+
+        def self.error_response(message)
+          MCP::Tool::Response.new(
+            [{ type: 'text', text: message }],
+            error: true
+          )
         end
 
         private
@@ -119,13 +124,6 @@ module RailsActiveMcp
             values = mapping.map { |label, db_value| "#{label} (#{db_value})" }.join(', ')
             @output << "  #{attribute}: #{values}"
           end
-        end
-
-        def self.error_response(message)
-          MCP::Tool::Response.new(
-            [{ type: 'text', text: message }],
-            error: true
-          )
         end
       end
     end
