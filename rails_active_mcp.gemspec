@@ -63,7 +63,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'rails', '>= 7.0', '< 9.0'
 
   # MCP SDK - Core protocol implementation (MCP 2025-11-25 spec)
-  spec.add_dependency 'mcp', '~> 0.7.0'
+  spec.add_dependency 'mcp', '~> 0.9.2'
 
   # Core dependencies
   spec.add_dependency 'json', '~> 2.0'
@@ -71,11 +71,11 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'timeout', '~> 0.4'
 
   # Development dependencies - keep versions consistent with Gemfile
-  spec.add_development_dependency 'colorize', '~> 0.8'
+  spec.add_development_dependency 'colorize', '~> 1.1'
   spec.add_development_dependency 'factory_bot_rails', '~> 6.0'
-  spec.add_development_dependency 'faker', '~> 2.19'
+  spec.add_development_dependency 'faker', '~> 3.6'
   spec.add_development_dependency 'rspec', '~> 3.1'
-  spec.add_development_dependency 'rspec-rails', '~> 6.0'
+  spec.add_development_dependency 'rspec-rails', '~> 8.0'
   spec.add_development_dependency 'rubocop', '~> 1.77'
   spec.add_development_dependency 'rubocop-rails', '~> 2.32'
   spec.add_development_dependency 'rubocop-rspec', '~> 3.0'

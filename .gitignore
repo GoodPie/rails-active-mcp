@@ -8,7 +8,9 @@ doc
 pkg
 rdoc
 Gemfile.lock
+gemfiles/*.lock
 node_modules
 package-lock.json
 .idea/
 log/
+spec/examples.txt
