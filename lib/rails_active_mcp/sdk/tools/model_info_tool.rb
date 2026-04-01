@@ -44,18 +44,31 @@ module RailsActiveMcp
 
         def self.call(model:, server_context:, include_schema: true, include_associations: true,
                       include_validations: true, include_enums: true)
+          new(model:, include_schema:, include_associations:, include_validations:, include_enums:).call
+        end
+
+        def initialize(model:, include_schema: true, include_associations: true,
+                       include_validations: true, include_enums: true)
+          @model = model
+          @include_schema = include_schema
+          @include_associations = include_associations
+          @include_validations = include_validations
+          @include_enums = include_enums
+        end
+
+        def call
           config = RailsActiveMcp.config
           executor = RailsActiveMcp::ConsoleExecutor.new(config)
-          result = executor.get_model_info(model)
+          result = executor.get_model_info(@model)
 
-          return error_response(result[:error]) unless result[:success]
+          return self.class.error_response(result[:error]) unless result[:success]
 
           output = []
           output << "Model: #{result[:model_name]}"
           output << "Table: #{result[:table_name]}"
           output << "Primary Key: #{result[:primary_key]}"
 
-          if include_schema
+          if @include_schema
             output << "\nSchema:"
             result[:columns].each do |column|
               output << "  #{column[:name]}: #{column[:type]}"
@@ -63,14 +76,14 @@ module RailsActiveMcp
             end
           end
 
-          if include_associations
+          if @include_associations
             output << "\nAssociations:"
             result[:associations].each do |assoc|
               output << "  #{assoc[:name]}: #{assoc[:type]} -> #{assoc[:class_name]}"
             end
           end
 
-          if include_validations && result[:validators]&.any?
+          if @include_validations && result[:validators]&.any?
             output << "\nValidations:"
             validations = {}
             result[:validators].each do |validator|
@@ -84,7 +97,7 @@ module RailsActiveMcp
             end
           end
 
-          if include_enums && result[:enums]&.any?
+          if @include_enums && result[:enums]&.any?
             output << "\nEnums:"
             result[:enums].each do |attribute, mapping|
               values = mapping.map { |label, db_value| "#{label} (#{db_value})" }.join(', ')
