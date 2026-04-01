@@ -1,0 +1,48 @@
+version: 2
+updates:
+  # Monitor root Gemfile + all Rails-version gemfiles
+  - package-ecosystem: "bundler"
+    directories:
+      - "/"
+      - "/gemfiles"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      mcp-sdk:
+        patterns:
+          - "mcp"
+      rails:
+        patterns:
+          - "rails"
+          - "railties"
+          - "activerecord"
+          - "activesupport"
+      all-other-deps:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "mcp"
+          - "rails"
+          - "railties"
+          - "activerecord"
+          - "activesupport"
+    labels:
+      - "dependencies"
+    reviewers:
+      - "goodpie"
+    open-pull-requests-limit: 10
+
+  # Keep GitHub Actions up to date
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "ci"
+    groups:
+      gh-actions:
+        patterns:
+          - "*"
