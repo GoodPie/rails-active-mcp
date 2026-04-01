@@ -46,7 +46,7 @@ module RailsActiveMcp
           new(model:, **).call
         end
 
-        def initialize(model:, **options) # rubocop:disable Lint/MissingSuper
+        def initialize(model: nil, **options) # rubocop:disable Lint/MissingSuper
           @model = model
           @include_schema = options.fetch(:include_schema, true)
           @include_associations = options.fetch(:include_associations, true)
