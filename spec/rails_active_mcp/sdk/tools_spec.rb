@@ -319,7 +319,8 @@ RSpec.describe 'MCP Tool Protocol Compliance' do
           associations: [
             { name: :posts, type: :has_many, class_name: 'Post' }
           ],
-          validators: []
+          validators: [],
+          enums: {}
         )
         described_class.call(model: 'User', server_context: server_context)
       end

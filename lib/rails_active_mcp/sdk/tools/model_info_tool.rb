@@ -59,7 +59,7 @@ module RailsActiveMcp
           executor = RailsActiveMcp::ConsoleExecutor.new(config)
           @result = executor.get_model_info(@model)
 
-          return self.class.error_response(@result[:error]) unless @result[:success]
+          return error_response unless @result[:success]
 
           @output = []
           @output << "Model: #{@result[:model_name]}"
@@ -74,13 +74,6 @@ module RailsActiveMcp
           MCP::Tool::Response.new([
                                     { type: 'text', text: @output.join("\n") }
                                   ])
-        end
-
-        def self.error_response(message)
-          MCP::Tool::Response.new(
-            [{ type: 'text', text: message }],
-            error: true
-          )
         end
 
         private
@@ -124,6 +117,13 @@ module RailsActiveMcp
             values = mapping.map { |label, db_value| "#{label} (#{db_value})" }.join(', ')
             @output << "  #{attribute}: #{values}"
           end
+        end
+
+        def error_response
+          MCP::Tool::Response.new(
+            [{ type: 'text', text: @result[:error] }],
+            error: true
+          )
         end
       end
     end
