@@ -126,7 +126,7 @@ Add to your project's `.cursor/mcp.json`:
 <details>
 <summary><strong>Windsurf</strong></summary>
 
-Add to your project's `.windsurf/mcp.json`:
+Add to your global Windsurf config at `~/.codeium/windsurf/mcp_config.json`:
 
 ```json
 {
@@ -217,15 +217,23 @@ The installer creates a default configuration at `config/initializers/rails_acti
 
 ```ruby
 RailsActiveMcp.configure do |config|
-  config.allowed_commands = %w[
-    ls pwd cat head tail grep find wc
-    rails console rails runner
-    bundle exec rspec bundle exec test
-    git status git log git diff
-  ]
-  config.command_timeout = 30
+  # Safety and execution
+  config.safe_mode = true              # Block dangerous operations
+  config.command_timeout = 30          # Seconds before timeout
+  config.max_results = 100             # Limit query results
+  config.allowed_models = []           # Empty = all models allowed
+  config.custom_safety_patterns = []   # Additional patterns to block
+
+  # Logging
   config.enable_logging = true
-  config.log_level = :info
+  config.log_level = :info             # :debug, :info, :warn, :error
+  config.log_executions = false        # Log all code executions
+  config.audit_file = nil              # Path to audit log file
+
+  # Environment presets (call instead of setting individually)
+  # config.production_mode!
+  # config.development_mode!
+  # config.test_mode!
 end
 ```
 
@@ -256,6 +264,33 @@ bundle exec rails-active-mcp-server
 
 # With debug logging
 RAILS_MCP_DEBUG=1 bundle exec rails-active-mcp-server
+```
+
+### Rake Tasks
+
+The gem provides several rake tasks for diagnostics and testing:
+
+```bash
+# Show status and diagnostics
+rails rails_active_mcp:status
+
+# Validate configuration
+rails rails_active_mcp:validate_config
+
+# Test MCP tools are working
+rails rails_active_mcp:test_tools
+
+# Check if code is safe
+rails rails_active_mcp:check_safety['User.delete_all']
+
+# Execute code with safety checks
+rails rails_active_mcp:execute['User.count']
+
+# Print Claude Desktop configuration
+rails rails_active_mcp:install_claude_config
+
+# Run performance benchmarks
+rails rails_active_mcp:benchmark
 ```
 
 ## Available MCP Tools
