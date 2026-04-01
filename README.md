@@ -401,20 +401,3 @@ bundle exec rspec
 ## License
 
 The gem is available as open source under the [MIT License](https://opensource.org/licenses/MIT).
-
-## Changelog
-
-### Version 2.0.0 (Latest)
-
-- **BREAKING**: Migrated to official MCP Ruby SDK
-- **BREAKING**: Removed custom MCP server implementation
-- **BREAKING**: Simplified configuration options
-- **NEW**: Professional protocol handling with built-in instrumentation
-- **NEW**: Automatic MCP specification compliance
-- **IMPROVED**: 85% reduction in codebase complexity
-- **IMPROVED**: Better error handling and reporting
-- **IMPROVED**: Future-proof architecture
-
-### Previous Versions
-
-See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
