@@ -9,7 +9,7 @@ module RailsActiveMcp
 
     # Safety and execution options
     attr_accessor :safe_mode, :max_results, :log_executions, :audit_file, :enabled
-    attr_accessor :custom_safety_patterns, :allowed_models
+    attr_accessor :custom_safety_patterns, :allowed_models, :safe_query_scope
 
     def initialize
       @command_timeout = 30
@@ -23,6 +23,7 @@ module RailsActiveMcp
       @audit_file = nil
       @custom_safety_patterns = []
       @allowed_models = []
+      @safe_query_scope = nil
       @enabled = true
     end
 

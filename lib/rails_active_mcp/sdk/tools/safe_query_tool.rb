@@ -47,7 +47,8 @@ module RailsActiveMcp
             model: model,
             method: method,
             args: args,
-            limit: limit
+            limit: limit,
+            server_context: server_context
           )
 
           if result[:success]

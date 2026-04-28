@@ -284,6 +284,15 @@ RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
       expect(content).to be_valid_ruby_syntax
     end
 
+    it 'documents the safe_query_scope proc in the initializer template' do
+      template_path = File.join(described_class.source_root, 'initializer.rb')
+      content = File.read(template_path)
+
+      expect(content).to include('config.safe_query_scope')
+      expect(content).to match(/model_class/)
+      expect(content).to match(/server_context/)
+    end
+
     it 'has valid wrapper template' do
       template_path = File.join(described_class.source_root, 'rails-active-mcp-wrapper')
       expect(File.exist?(template_path)).to be true

@@ -403,4 +403,16 @@ RSpec.describe RailsActiveMcp::Configuration do
       expect(config.valid?).to be true
     end
   end
+
+  describe 'safe_query_scope' do
+    it 'defaults to nil' do
+      expect(config.safe_query_scope).to be_nil
+    end
+
+    it 'can be assigned a proc' do
+      proc_value = ->(_model, _ctx = nil) { :scoped }
+      config.safe_query_scope = proc_value
+      expect(config.safe_query_scope).to eq(proc_value)
+    end
+  end
 end

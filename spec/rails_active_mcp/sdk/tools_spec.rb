@@ -494,6 +494,22 @@ RSpec.describe 'MCP Tool Protocol Compliance' do
       end
     end
 
+    context 'with server_context' do
+      it 'forwards server_context to the executor' do
+        allow(executor).to receive(:execute_safe_query).and_return(
+          success: true,
+          result: [],
+          count: 0
+        )
+
+        described_class.call(model: 'User', method: 'count', server_context: server_context)
+
+        expect(executor).to have_received(:execute_safe_query).with(
+          hash_including(server_context: server_context)
+        )
+      end
+    end
+
     context 'when method is disallowed' do
       let(:response) do
         allow(executor).to receive(:execute_safe_query).and_return(
