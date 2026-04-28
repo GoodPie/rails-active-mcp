@@ -22,6 +22,11 @@ module RailsActiveMcp
               type: 'array',
               description: 'Arguments for the query method'
             },
+            where: {
+              type: 'object',
+              description: 'Optional WHERE conditions as a hash (e.g. {"active": true, "status": "paid"}). Applied before the method is called.',
+              additionalProperties: true
+            },
             limit: {
               type: 'integer',
               description: 'Limit results (default: 100)'
@@ -38,21 +43,25 @@ module RailsActiveMcp
           open_world_hint: false
         )
 
-        def self.call(model:, method:, server_context:, args: [], limit: 100)
-          config = RailsActiveMcp.config
+        def self.call(model:, method:, server_context:, **options)
+          args = options.fetch(:args, [])
+          where = options[:where]
+          limit = options.fetch(:limit, 100)
 
+          config = RailsActiveMcp.config
           executor = RailsActiveMcp::ConsoleExecutor.new(config)
 
           result = executor.execute_safe_query(
             model: model,
             method: method,
             args: args,
+            where: where,
             limit: limit
           )
 
           if result[:success]
             output = []
-            output << "Query: #{model}.#{method}(#{args.join(', ')})"
+            output << "Query: #{format_query(model, method, args, where)}"
             output << "Count: #{result[:count]}" if result[:count]
             output << "Result: #{result[:result].inspect}"
 
@@ -62,6 +71,15 @@ module RailsActiveMcp
           else
             error_response(result[:error])
           end
+        end
+
+        def self.format_query(model, method, args, where)
+          prefix = if where.is_a?(Hash) && where.any?
+                     "#{model}.where(#{where.inspect})"
+                   else
+                     model.to_s
+                   end
+          "#{prefix}.#{method}(#{args.join(', ')})"
         end
 
         def self.error_response(message)

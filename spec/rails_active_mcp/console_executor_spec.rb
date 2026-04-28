@@ -173,6 +173,20 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
       expect(result[:method]).to eq('count')
     end
 
+    it 'applies where conditions before count' do
+      filtered = double('Relation', count: 3)
+      model = double('Model')
+      allow(model).to receive(:where).with({ active: true }).and_return(filtered)
+      allow(String).to receive(:constantize).and_return(model)
+
+      result = executor.execute_safe_query(model: 'User', method: 'count', where: { active: true })
+
+      expect(result[:success]).to be true
+      expect(result[:result]).to eq(3)
+      expect(result[:where]).to eq({ active: true })
+      expect(model).to have_received(:where).with({ active: true })
+    end
+
     it 'blocks unsafe query methods' do
       result = executor.execute_safe_query(model: 'User', method: 'delete_all')
 
@@ -189,6 +203,49 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
       expect(result[:success]).to be false
       expect(result[:error_class]).to eq('SafetyError')
       expect(result[:error]).to include('not allowed')
+    end
+
+    it 'treats an empty where hash as no filter' do
+      model = double('Model', count: 7)
+      expect(model).not_to receive(:where)
+      allow(String).to receive(:constantize).and_return(model)
+
+      result = executor.execute_safe_query(model: 'User', method: 'count', where: {})
+
+      expect(result[:success]).to be true
+      expect(result[:result]).to eq(7)
+    end
+
+    it 'rejects where queries on disallowed models' do
+      config.allowed_models = ['User']
+
+      result = executor.execute_safe_query(
+        model: 'SecretModel',
+        method: 'count',
+        where: { active: true }
+      )
+
+      expect(result[:success]).to be false
+      expect(result[:error_class]).to eq('SafetyError')
+      expect(result[:where]).to eq({ active: true })
+    end
+
+    it 'applies where conditions before sum with args' do
+      filtered = double('Relation')
+      model = double('Model')
+      allow(model).to receive(:where).with({ status: 'paid' }).and_return(filtered)
+      allow(filtered).to receive(:sum).with(:total).and_return(150)
+      allow(String).to receive(:constantize).and_return(model)
+
+      result = executor.execute_safe_query(
+        model: 'Order',
+        method: 'sum',
+        args: [:total],
+        where: { status: 'paid' }
+      )
+
+      expect(result[:success]).to be true
+      expect(result[:result]).to eq(150)
     end
   end
 

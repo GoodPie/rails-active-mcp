@@ -494,6 +494,38 @@ RSpec.describe 'MCP Tool Protocol Compliance' do
       end
     end
 
+    context 'when where conditions are passed' do
+      let(:response) do
+        allow(executor).to receive(:execute_safe_query).and_return(
+          success: true,
+          result: 3,
+          count: 1,
+          where: { active: true }
+        )
+        described_class.call(
+          model: 'User',
+          method: 'count',
+          where: { active: true },
+          server_context: server_context
+        )
+      end
+
+      it_behaves_like 'a successful MCP tool response'
+
+      it 'forwards where to the executor' do
+        response
+        expect(executor).to have_received(:execute_safe_query)
+          .with(hash_including(where: { active: true }))
+      end
+
+      it 'includes where in the Query line' do
+        text = response.to_h[:content].first[:text]
+        expect(text).to include('Query: User.where(')
+        expect(text).to include('.count')
+        expect(text).to match(/active.*?true/)
+      end
+    end
+
     context 'when method is disallowed' do
       let(:response) do
         allow(executor).to receive(:execute_safe_query).and_return(
@@ -538,9 +570,9 @@ RSpec.describe 'MCP Tool Protocol Compliance' do
         expect(schema[:required]).to contain_exactly('model', 'method')
       end
 
-      it 'defines model, method, args, limit properties' do
+      it 'defines model, method, args, where, limit properties' do
         props = described_class.input_schema_value.to_h[:properties]
-        expect(props.keys).to contain_exactly(:model, :method, :args, :limit)
+        expect(props.keys).to contain_exactly(:model, :method, :args, :where, :limit)
       end
 
       it 'is annotated as read-only' do
@@ -553,6 +585,12 @@ RSpec.describe 'MCP Tool Protocol Compliance' do
 
       it 'is annotated as idempotent' do
         expect(described_class.annotations_value.idempotent_hint).to be true
+      end
+
+      it 'declares an optional where property in the input schema' do
+        props = described_class.input_schema_value.to_h[:properties]
+        expect(props).to have_key(:where)
+        expect(props[:where][:type]).to eq('object')
       end
     end
   end

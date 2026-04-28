@@ -47,7 +47,7 @@ module RailsActiveMcp
       }
     end
 
-    def execute_safe_query(model:, method:, args: [], limit: nil)
+    def execute_safe_query(model:, method:, args: [], where: nil, limit: nil)
       limit ||= @config.max_results
 
       begin
@@ -61,11 +61,15 @@ module RailsActiveMcp
         execute_with_rails_executor_and_connection do
           model_class = model.to_s.constantize
 
+          # Build base relation, applying optional WHERE conditions
+          relation = model_class
+          relation = relation.where(where) if where.is_a?(Hash) && where.any?
+
           # Build and execute query
           query = if args.empty?
-                    model_class.public_send(method)
+                    relation.public_send(method)
                   else
-                    model_class.public_send(method, *args)
+                    relation.public_send(method, *args)
                   end
 
           # Apply limit for enumerable results
@@ -78,6 +82,7 @@ module RailsActiveMcp
             model: model,
             method: method,
             args: args,
+            where: where,
             result: serialize_result(result),
             count: calculate_count(result),
             executed_at: Time.now
@@ -90,17 +95,19 @@ module RailsActiveMcp
           error_class: 'SafetyError',
           model: model,
           method: method,
-          args: args
+          args: args,
+          where: where
         }
       rescue StandardError => e
-        log_error(e, { model: model, method: method, args: args })
+        log_error(e, { model: model, method: method, args: args, where: where })
         {
           success: false,
           error: e.message,
           error_class: e.class.name,
           model: model,
           method: method,
-          args: args
+          args: args,
+          where: where
         }
       end
     end

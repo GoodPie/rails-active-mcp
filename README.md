@@ -332,6 +332,9 @@ Execute safe, read-only database queries:
 
 **Example prompt:**
 > "Get the 10 most recent orders"
+> "Count active users"
+
+You can pass an optional `where` hash to filter records before invoking the method. For example, `safe_query(model: "User", method: "count", where: { active: true })` runs `User.where(active: true).count`. The same applies to `sum`, `average`, `minimum`, `maximum`, `pluck`, and `exists?`.
 
 ### 4. `dry_run`
 
