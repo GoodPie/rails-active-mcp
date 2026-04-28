@@ -192,6 +192,58 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
     end
   end
 
+  describe 'safe_query_scope application' do
+    let(:scoped_relation) { double('ActiveRecord::Relation', count: 42) }
+    let(:test_model) { Class.new { def self.count; end } }
+
+    before do
+      stub_const('SafeQueryScopeTestModel', test_model)
+    end
+
+    it 'invokes the proc with the model class and server_context' do
+      received_args = []
+      config.safe_query_scope = lambda do |model, server_context|
+        received_args << [model, server_context]
+        scoped_relation
+      end
+
+      ctx = { user_id: 99 }
+      result = executor.execute_safe_query(
+        model: 'SafeQueryScopeTestModel',
+        method: 'count',
+        server_context: ctx
+      )
+
+      expect(received_args).to eq([[test_model, ctx]])
+      expect(result[:success]).to be true
+      expect(result[:result]).to eq(42)
+    end
+
+    it 'passes an empty hash to the proc when server_context is nil' do
+      received_args = []
+      config.safe_query_scope = lambda do |model, server_context|
+        received_args << [model, server_context]
+        scoped_relation
+      end
+
+      result = executor.execute_safe_query(model: 'SafeQueryScopeTestModel', method: 'count')
+
+      expect(received_args).to eq([[test_model, {}]])
+      expect(result[:success]).to be true
+      expect(result[:result]).to eq(42)
+    end
+
+    it 'runs the method directly on the model class when no proc is configured' do
+      allow(test_model).to receive(:count).and_return(7)
+
+      result = executor.execute_safe_query(model: 'SafeQueryScopeTestModel', method: 'count')
+
+      expect(test_model).to have_received(:count)
+      expect(result[:success]).to be true
+      expect(result[:result]).to eq(7)
+    end
+  end
+
   describe '#get_model_info' do
     it 'blocks access to disallowed models' do
       config.allowed_models = ['User']

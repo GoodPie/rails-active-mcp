@@ -47,7 +47,7 @@ module RailsActiveMcp
       }
     end
 
-    def execute_safe_query(model:, method:, args: [], limit: nil)
+    def execute_safe_query(model:, method:, args: [], limit: nil, server_context: nil)
       limit ||= @config.max_results
 
       begin
@@ -60,12 +60,13 @@ module RailsActiveMcp
         # Execute with proper Rails executor and connection management
         execute_with_rails_executor_and_connection do
           model_class = model.to_s.constantize
+          scope = apply_safe_query_scope(model_class, server_context)
 
           # Build and execute query
           query = if args.empty?
-                    model_class.public_send(method)
+                    scope.public_send(method)
                   else
-                    model_class.public_send(method, *args)
+                    scope.public_send(method, *args)
                   end
 
           # Apply limit for enumerable results
@@ -238,6 +239,13 @@ module RailsActiveMcp
       ]
 
       safe_methods.include?(method.to_s)
+    end
+
+    def apply_safe_query_scope(model_class, server_context)
+      scope_proc = @config.safe_query_scope
+      return model_class unless scope_proc
+
+      scope_proc.call(model_class, server_context || {})
     end
 
     def execute_with_rails_executor(code, timeout, capture_output)
