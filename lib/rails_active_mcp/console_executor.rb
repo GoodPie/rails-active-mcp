@@ -17,7 +17,7 @@ module RailsActiveMcp
 
     def initialize(config)
       @config = config
-      @safety_checker = SafetyChecker.new(config)
+      @safety_checker = config.safety_checker.new(config)
     end
 
     def execute(code, timeout: nil, safe_mode: nil, capture_output: true)

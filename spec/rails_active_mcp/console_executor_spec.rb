@@ -22,6 +22,87 @@ RSpec.describe RailsActiveMcp::ConsoleExecutor do
     end
   end
 
+  describe 'configurable safety checker' do
+    let(:recording_checker_class) do
+      Class.new do
+        attr_reader :received_config
+
+        def initialize(config)
+          @received_config = config
+        end
+
+        def safe?(_code)
+          true
+        end
+
+        def analyze(_code)
+          { safe: true, read_only: true, violations: [], summary: 'recording: safe' }
+        end
+
+        def read_only?(_code)
+          true
+        end
+      end
+    end
+
+    let(:blocking_checker_class) do
+      Class.new do
+        def initialize(config); end
+
+        def safe?(_code)
+          false
+        end
+
+        def analyze(_code)
+          {
+            safe: false,
+            read_only: false,
+            violations: [{ pattern: //, description: 'blocked by custom', severity: :critical }],
+            summary: 'custom: blocked'
+          }
+        end
+
+        def read_only?(_code)
+          false
+        end
+      end
+    end
+
+    it 'instantiates the class assigned to config.safety_checker with the config' do
+      config.safety_checker = recording_checker_class
+      executor = described_class.new(config)
+
+      checker = executor.instance_variable_get(:@safety_checker)
+      expect(checker).to be_a(recording_checker_class)
+      expect(checker.received_config).to eq(config)
+    end
+
+    it 'returns a SafetyError result when the custom checker reports unsafe in safe_mode' do
+      config.safety_checker = blocking_checker_class
+      config.safe_mode = true
+      executor = described_class.new(config)
+
+      result = executor.execute('1 + 1')
+
+      expect(result[:success]).to be false
+      expect(result[:error_class]).to eq('SafetyError')
+      expect(result[:error]).to include('custom: blocked')
+    end
+
+    it 'allows execution when the custom checker reports safe in safe_mode' do
+      config.safety_checker = recording_checker_class
+      config.safe_mode = true
+      executor = described_class.new(config)
+
+      # eval(...) would be blocked by the default SafetyChecker (severity :high);
+      # passing here proves the executor is consulting the custom checker, not the default.
+      result = executor.execute('eval("1 + 1")')
+
+      expect(result[:success]).to be true
+      expect(result[:return_value]).to eq(2)
+    end
+  end
+
   describe '#execute' do
     context 'with safe code' do
       it 'executes simple arithmetic safely' do

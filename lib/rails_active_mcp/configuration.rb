@@ -9,7 +9,7 @@ module RailsActiveMcp
 
     # Safety and execution options
     attr_accessor :safe_mode, :max_results, :log_executions, :audit_file, :enabled
-    attr_accessor :custom_safety_patterns, :allowed_models
+    attr_accessor :custom_safety_patterns, :allowed_models, :safety_checker
 
     def initialize
       @command_timeout = 30
@@ -23,6 +23,7 @@ module RailsActiveMcp
       @audit_file = nil
       @custom_safety_patterns = []
       @allowed_models = []
+      @safety_checker = RailsActiveMcp::SafetyChecker
       @enabled = true
     end
 
@@ -41,7 +42,8 @@ module RailsActiveMcp
         [true, false].include?(log_executions) &&
         custom_safety_patterns.is_a?(Array) &&
         allowed_models.is_a?(Array) &&
-        [true, false].include?(enabled)
+        [true, false].include?(enabled) &&
+        !safety_checker.nil?
     end
 
     def validate?
