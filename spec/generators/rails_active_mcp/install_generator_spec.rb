@@ -284,6 +284,16 @@ RSpec.describe RailsActiveMcp::Generators::InstallGenerator, type: :generator do
       expect(content).to be_valid_ruby_syntax
     end
 
+    it 'documents the safety_checker override in the initializer template' do
+      template_path = File.join(described_class.source_root, 'initializer.rb')
+      content = File.read(template_path)
+
+      expect(content).to include('config.safety_checker')
+      expect(content).to match(/safe\?\(code\)/)
+      expect(content).to match(/analyze\(code\)/)
+      expect(content).to match(/read_only\?\(code\)/)
+    end
+
     it 'has valid wrapper template' do
       template_path = File.join(described_class.source_root, 'rails-active-mcp-wrapper')
       expect(File.exist?(template_path)).to be true
