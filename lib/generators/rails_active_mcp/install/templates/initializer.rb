@@ -24,6 +24,11 @@ RailsActiveMcp.configure do |config|
   #   { pattern: /YourDangerousMethod/, description: "Your custom dangerous operation" }
   # ]
 
+  # Replace the safety checker entirely with your own implementation.
+  # The class must respond to .new(config) and the resulting instance must
+  # respond to safe?(code), analyze(code), and read_only?(code).
+  # config.safety_checker = MyCustomSafetyChecker
+
   # Environment-specific adjustments
   case Rails.env
   when 'production'

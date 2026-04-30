@@ -34,7 +34,7 @@ module RailsActiveMcp
 
     # Quick access to safety checker
     def safe?(code)
-      SafetyChecker.new(config).safe?(code)
+      config.safety_checker.new(config).safe?(code)
     end
 
     # Quick execution method

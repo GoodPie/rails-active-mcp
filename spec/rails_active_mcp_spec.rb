@@ -31,6 +31,26 @@ RSpec.describe RailsActiveMcp do
     it 'returns false for dangerous code' do
       expect(described_class.safe?('User.delete_all')).to be false
     end
+
+    it 'delegates to config.safety_checker' do
+      received_codes = []
+      always_unsafe = Class.new do
+        def initialize(_config); end
+
+        define_method(:safe?) do |code|
+          received_codes << code
+          false
+        end
+      end
+
+      described_class.configure do |config|
+        config.safe_mode = true
+        config.safety_checker = always_unsafe
+      end
+
+      expect(described_class.safe?('User.count')).to be false
+      expect(received_codes).to eq(['User.count'])
+    end
   end
 
   describe '.execute' do
