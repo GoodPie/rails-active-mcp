@@ -121,6 +121,19 @@ RSpec.describe 'RailsActiveMcp Integration' do
         expect(result[:success]).to be false
         expect(result[:error]).to include('not allowed')
       end
+
+      it 'counts with where conditions' do
+        result = executor.execute_safe_query(
+          model: 'User',
+          method: 'count',
+          where: { active: true }
+        )
+
+        RSpec.configuration.reporter.message("DEBUG: result = #{result.inspect}") if result[:success] == false
+        expect(result[:success]).to be true
+        expect(result[:result]).to eq(42)
+        expect(result[:where]).to eq({ active: true })
+      end
     end
 
     describe 'model introspection' do

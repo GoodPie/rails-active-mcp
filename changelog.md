@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `safe_query` now accepts an optional `where` hash to filter records before invoking terminal methods like `count`, `sum`, `pluck`, `exists?`, `minimum`, `maximum`, and `average`. Example: `safe_query(model: "User", method: "count", where: { active: true })` runs `User.where(active: true).count`.
+
 ### Changed
 
 ## [3.1.0] - 2026-02-09
